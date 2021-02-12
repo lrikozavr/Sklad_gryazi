@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from mpmath import *
 from math import *
+import numpy as np
+import pandas as pd
 
 class Star(object):
 	"""docstring for Star"""
@@ -62,9 +64,18 @@ class Star(object):
 	def DtoH(self,value):
 		return value/15
 	#######################################
+	def info(self):
+		print("Alpha:	",self.HDtohd(self.alpha,"dh"))
+		print("Delta:	",self.HDtohd(self.delta,""))
+	def info_abs(self):
+		print("Alpha:	",self.alpha)
+		print("Delta:	",self.delta)
+	#######################################
+
 class Observe(Star):
-	def __init__(self,lambada,fi,alpha,delta):
-		super(Observe,self).__init__(alpha,delta)#?
+	def __init__(self,lambada,fi):
+	#def __init__(self,lambada,fi,alpha,delta):
+		#super(Observe,self).__init__(alpha,delta)#?
 		self.lambada = lambada
 		self.fi = fi
 	#######################################
@@ -74,49 +85,47 @@ class Observe(Star):
 		return ((20.043109 - 0.008533*t - 0.00000217*t**2)*t*100)/3600.
 	def T(self,jd):
 		return (jd-2451545.0)/36524.2199
-	def ALPHA(self,jd):
-		return (self.alpha+self.M(self.T(jd))*sin(self.DtoR(self.alpha))*tan(self.DtoR(self.delta)))	#radian????
-	def DELTA(self,jd):
-		return (self.delta+self.N(self.T(jd))*cos(self.DtoR(self.alpha)))
+	def ALPHA(self,jd,alpha,delta):
+		return (alpha+self.M(self.T(jd))*sin(self.DtoR(alpha))*tan(self.DtoR(delta)))	#radian????
+	def DELTA(self,jd,alpha,delta):
+		return (delta+self.N(self.T(jd))*cos(self.DtoR(alpha)))
 	########################################
 	def S0(self,t):
 		return self.StoH(self.hdtoHD(6,41,50.54841,"")*3600. + 86401.84812866*t + 0.093104*t**2 - 0.62e-5*t**3) #hour
 	def S(self,s): #hour
 		return (s-self.hdtoHD(0,3,56.55,"")*(self.lambada/self.hdtoHD(24,0,0,"")))
-	def Time_Angle(self,ut,jd):
+	def Time_Angle(self,ut,jd,alpha):
 		#print("s",s)
-		return (ut*1.002738 - self.DtoH(self.alpha) + self.lambada + self.S(self.S0(self.T(jd))))
+		return (ut*1.002738 - self.DtoH(alpha) + self.lambada + self.S(self.S0(self.T(jd))))
 	########################################
-	def trig(self,Time_Angle):
-		return sin(self.DtoR(self.fi))*sin(self.DtoR(self.delta)) + cos(self.DtoR(self.fi))*cos(self.DtoR(self.delta))*cos(self.DtoR(Time_Angle))
-	def Horisontal_coord(self,Time_Angle):
-		return self.RtoD(asin(self.trig(Time_Angle)))
-	def Zenit_coord(self,Time_Angle):
-		return self.RtoD(asec(1/self.trig(Time_Angle)))
-	def Bemporad(self,Time_Angle):
-		z=1/self.trig(Time_Angle)
+	def trig(self,Time_Angle,delta):
+		return sin(self.DtoR(self.fi))*sin(self.DtoR(delta)) + cos(self.DtoR(self.fi))*cos(self.DtoR(delta))*cos(self.DtoR(Time_Angle))
+	def Horisontal_coord(self,Time_Angle,delta):
+		return self.RtoD(asin(self.trig(Time_Angle,delta)))
+	def Zenit_coord(self,Time_Angle,delta):
+		return self.RtoD(asec(1/self.trig(Time_Angle,delta)))
+	def Bemporad(self,Time_Angle,delta):
+		z=1/self.trig(Time_Angle,delta)
 		return (z - 0.0018167*(z-1) - 0.002875*(z-1)**2 - 0.0008083*(z-1)**3)
 	########################################
 	def info_abs(self):
-		print("Lambda:	",self.HtoD(self.lambada))
+		print("Lambda:	",self.lambada)
 		print("Fi:	",self.fi) 
-		print("Alpha:	",self.alpha)
-		print("Delta:	",self.delta)
 	def info(self):
 		print("Lambda: ",self.HDtohd(self.lambada,""))
 		print("Fi:	",self.HDtohd(self.fi,""))
-		print("Alpha:	",self.HDtohd(self.alpha,"dh"))
-		print("Delta:	",self.HDtohd(self.delta,""))
 	########################################
 
 
 
-######
+###### Константы наблюдателья
 lambada=[2,24,55.8] #долгота
-fi=["+",50,0,10] 		#широта
+fi=["+",50,0,10] 	#широта
+###### Константы времени наблюдения
 date=2459292.5
 UT=16
 ######
+
 def HtoD(h,m,s):
     return (h+m/60.+s/3600.)*15.
 def DtoD(d,m,s,z):
@@ -124,32 +133,54 @@ def DtoD(d,m,s,z):
         return -d-m/60.-s/3600.
     elif (z=="+"): 
         return d+m/60.+s/3600.
-def HtoS(h,m,s):
-	return (h*3600 + m*60 + s)
+def HtoH(h,m,s):
+	return (h + m/60. + s/3600.)
+def CtoC(ah0,am0,as0,dd0,dm0,ds0,dz0):
+	return HtoD(ah0,am0,as0),DtoD(dd0,dm0,ds0,dz0)
 
-def AD(ah0,am0,as0,dd0,dm0,ds0,dz0,date):
-	one = Observe(HtoS(lambada[0],lambada[1],lambada[2])/3600.,DtoD(fi[1],fi[2],fi[3],fi[0]),HtoD(ah0,am0,as0),DtoD(dd0,dm0,ds0,dz0))
-	alfa=one.ALPHA(date)
-	delta=one.DELTA(date)
+def AD(a,d,date):
+	one = Observe(HtoH(lambada[0],lambada[1],lambada[2]),DtoD(fi[1],fi[2],fi[3],fi[0]))
+	s=Star(a,d)
+	alfa=one.ALPHA(date,s.alpha,s.delta)
+	delta=one.DELTA(date,s.alpha,s.delta)
 	#one.info()
-	one.info_abs()
+	s.info()
+	s.info_abs()
+	one.info()
 	return alfa,delta
 
-alpha,delta=AD(10,56,28.8,7,0,52.34,"+",date)
-#alpha,delta=AD(12,35,28.3,57,5,22.32,"-",date)
+star=pd.DataFrame(np.array([[10,56,28.8,7,0,52.34,"+"],
+	[12,35,28.3,57,5,22.32,"-"],
+	[20,26,18.6,17,20,32.22,"+"],
+	[2,25,10.3,0,32,11.44,"+"]]))
+star=star.transpose()
+#print(int(star[0][0]),int(star[0][1]),float(star[0][2]),int(star[0][3]),int(star[0][4]),float(star[0][5]),star[0][6])
+#print(CtoC(int(star[0][0]),int(star[0][1]),float(star[0][2]),int(star[0][3]),int(star[0][4]),float(star[0][5]),star[0][6]))
+for i in range(4):
+	alpha,delta=CtoC(int(star[i][0]),int(star[i][1]),float(star[i][2]),int(star[i][3]),int(star[i][4]),float(star[i][5]),star[i][6])
+	alpha,delta=AD(alpha,delta,date)
+	s=Star(alpha,delta)
 
-user=Observe(HtoS(lambada[0],lambada[1],lambada[2])/3600.,DtoD(fi[1],fi[2],fi[3],fi[0]),alpha,delta)
-#user.info()
+	user=Observe(HtoH(lambada[0],lambada[1],lambada[2]),DtoD(fi[1],fi[2],fi[3],fi[0]))
+	#user.info()
 
-Time_Angle=user.Time_Angle(UT,date)
-Time_Angle=user.HtoD(Time_Angle)
+	Time_Angle=user.Time_Angle(UT,date,alpha)
+	Time_Angle=user.HtoD(Time_Angle)
 
-print("Alpha:	",alpha)
-print("Delta:	",delta)
-print("----------------------------------------")
-if (user.Horisontal_coord(Time_Angle) > (90-user.fi+user.delta)):
-	print("Horisontal_coord error")
-	exit()
-print("Horisontal_coord: 		",user.Horisontal_coord(Time_Angle))
-print("Zenit_coord:			",user.Zenit_coord(Time_Angle))
-print("Air_mass:			",user.Bemporad(Time_Angle))
+	print("Changed Alpha:	",alpha)
+	print("Changed Delta:	",delta)
+	print("----------------------------------------")
+	if (user.Horisontal_coord(Time_Angle,delta) > (90-user.fi+s.delta)):
+		print("Horisontal_coord error")
+		exit()	
+	print("Horisontal_coord: 		",user.Horisontal_coord(Time_Angle,delta))
+	print("Zenit_coord:			",user.Zenit_coord(Time_Angle,delta))
+	if (user.Horisontal_coord(Time_Angle,delta) < 0):
+		print("Not Visible")
+		print("*******************************************************")	
+		continue
+	else:
+		print("Visible")
+	#print(user.Horisontal_coord(Time_Angle,delta)+user.Zenit_coord(Time_Angle,delta))
+	print("Air_mass:			",user.Bemporad(Time_Angle,delta))
+	print("*******************************************************")
