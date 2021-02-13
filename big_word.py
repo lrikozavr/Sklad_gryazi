@@ -143,7 +143,7 @@ alphabet=([
 #start
 for i in range(5):
 	print(str(alphabet[18][i][0])+" "+str(alphabet[19][i][0])+" "+str(alphabet[0][i][0])+" "+str(alphabet[17][i][0])+" "+str(alphabet[19][i][0]))
-s1,s2,s3,s4=" ","▓","#","░"
+s1,s2,s3,s4="#","▓"," ","░"
 
 
 
