@@ -1,9 +1,8 @@
 #!/home/lrikozavr/py_env/ML/bin/python3
 # -*- coding: utf-8 -*-
+from tkinter import *
 from mpmath import *
 from math import *
-import numpy as np
-import pandas as pd
 
 class Star(object):
 	"""docstring for Star"""
@@ -96,7 +95,10 @@ class Observe(Star):
 		return (s-self.hdtoHD(0,3,56.55,"")*(self.lambada/self.hdtoHD(24,0,0,"")))
 	def Time_Angle(self,ut,jd,alpha):
 		#print("s",s)
-		return (ut*1.002738 - self.DtoH(alpha) + self.lambada + self.S(self.S0(self.T(jd))))
+		result = (ut*1.002738 - self.DtoH(alpha) + self.lambada + self.S(self.S0(self.T(jd))))
+		if (result>24.):
+			result-=24
+		return result
 	########################################
 	def trig(self,Time_Angle,delta):
 		return sin(self.DtoR(self.fi))*sin(self.DtoR(delta)) + cos(self.DtoR(self.fi))*cos(self.DtoR(delta))*cos(self.DtoR(Time_Angle))
@@ -119,11 +121,11 @@ class Observe(Star):
 
 
 ###### Константы наблюдателья
-lambada=[2,24,55.8] #долгота
-fi=["+",50,0,10] 	#широта
+#lambada=[2,24,55.8] #долгота
+#fi=["+",50,0,10] 	#широта
 ###### Константы времени наблюдения
-date=2459292.5
-UT=16
+#date=2459292.5
+#UT=16
 ######
 
 def HtoD(h,m,s):
@@ -144,20 +146,28 @@ def AD(a,d,date):
 	alfa=one.ALPHA(date,s.alpha,s.delta)
 	delta=one.DELTA(date,s.alpha,s.delta)
 	#one.info()
-	s.info()
-	s.info_abs()
-	one.info()
+	#s.info()
+	#s.info_abs()
+	#one.info()
 	return alfa,delta
 
-star=pd.DataFrame(np.array([[10,56,28.8,7,0,52.34,"+"],
-	[12,35,28.3,57,5,22.32,"-"],
-	[20,26,18.6,17,20,32.22,"+"],
-	[2,25,10.3,0,32,11.44,"+"]]))
-star=star.transpose()
-#print(int(star[0][0]),int(star[0][1]),float(star[0][2]),int(star[0][3]),int(star[0][4]),float(star[0][5]),star[0][6])
-#print(CtoC(int(star[0][0]),int(star[0][1]),float(star[0][2]),int(star[0][3]),int(star[0][4]),float(star[0][5]),star[0][6]))
-for i in range(4):
-	alpha,delta=CtoC(int(star[i][0]),int(star[i][1]),float(star[i][2]),int(star[i][3]),int(star[i][4]),float(star[i][5]),star[i][6])
+lambada=[2,24,55.8] #долгота
+fi=["+",50,0,10] 	#широта
+
+def retrun(line1,line2):
+	n1=line1.split(" ") #ra
+	n2=line2.split(" ") #dec
+	return HtoD(int(n1[0]),int(n1[1]),float(n1[2])),DtoD(int(n2[1]),int(n2[2]),float(n2[3]),n2[0]) 
+
+def Act():
+	#
+	UT=float(e1.get())
+	date=float(e2.get())
+	#
+	alpha,delta=retrun(e3.get(),e4.get())
+	#
+	result_line="Origin Alpha:\t"+str(alpha)+"\nOrigin Delta:\t"+str(delta)
+	#
 	alpha,delta=AD(alpha,delta,date)
 	s=Star(alpha,delta)
 
@@ -165,22 +175,90 @@ for i in range(4):
 	#user.info()
 
 	Time_Angle=user.Time_Angle(UT,date,alpha)
-	Time_Angle=user.HtoD(Time_Angle)
 
-	print("Changed Alpha:	",alpha)
-	print("Changed Delta:	",delta)
-	print("----------------------------------------")
+
+	result_line+="\nChanged Alpha:	"+str(alpha)
+	#lt.set(result_line)
+	result_line+="\n"+"Changed Delta:	"+str(delta)
+	#lt.set(result_line)
+	
+	result_line+="\n----------------------------------------"
+	result_line+="\nTime_Angle:	"+str(Time_Angle)
+	Time_Angle=user.HtoD(Time_Angle)
 	if (user.Horisontal_coord(Time_Angle,delta) > (90-user.fi+s.delta)):
 		print("Horisontal_coord error")
 		exit()	
-	print("Horisontal_coord: 		",user.Horisontal_coord(Time_Angle,delta))
-	print("Zenit_coord:			",user.Zenit_coord(Time_Angle,delta))
+	result_line+="\nAltitude_Angle:	"+str(user.Horisontal_coord(Time_Angle,delta))
+	#result_line+="\nZenit_coord:	"+str(user.Zenit_coord(Time_Angle,delta))
 	if (user.Horisontal_coord(Time_Angle,delta) < 0):
-		print("Not Visible")
-		print("*******************************************************")	
-		continue
+		result_line+="\nNot Visible"
+		result_line+="\n----------------------------------------"
 	else:
-		print("Visible")
+		result_line+="\nVisible"
 	#print(user.Horisontal_coord(Time_Angle,delta)+user.Zenit_coord(Time_Angle,delta))
-	print("Air_mass:			",user.Bemporad(Time_Angle,delta))
-	print("*******************************************************")
+	result_line+="\nAir_mass:	"+str(user.Bemporad(Time_Angle,delta))
+	result_line+="\n----------------------------------------"
+	lt.set(result_line)
+
+root = Tk()
+root.title("Star navigator")
+w = root.winfo_screenwidth()
+h = root.winfo_screenheight()
+w = w//2 # середина экрана
+h = h//2 
+w = w - 300 # смещение от середины
+h = h - 300
+root.geometry('600x600+{}+{}'.format(w, h))
+lt= StringVar()
+lab = Label(root,bg='black',fg='white',textvariable=lt,anchor='w').place(
+	relwidth=0.5,relheight=1,relx=0.5)
+#command
+but = Button(root,text="Result",activebackground='gray',bg='white',fg='black',command=Act).place(
+	relwidth=0.3,relheight=0.1,relx=0.1,rely=0.8)
+
+e1,e2,e3,e4 = StringVar(),StringVar(),StringVar(),StringVar()
+ent1 = Entry(root,bg='white',fg='black',textvariable=e1).place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.1)
+ent2 = Entry(root,bg='white',fg='black',textvariable=e2).place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.2)
+ent3 = Entry(root,bg='white',fg='black',textvariable=e3).place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.3)
+ent4 = Entry(root,bg='white',fg='black',textvariable=e4).place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.4)
+
+lb1 = Label(root,fg='black',text="UT").place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.05)
+lb2 = Label(root,fg='black',text="JD").place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.15)
+lb3 = Label(root,fg='black',text="alpha2000").place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.25)
+lb4 = Label(root,fg='black',text="delta2000").place(
+	relwidth=0.4,height=25,relx=0.05,rely=0.35)
+
+e1.set("16")
+e2.set("2459292.5")
+
+def ex1():
+	e3.set("10 56 28.8")
+	e4.set("+ 7 0 52.34")
+def ex2():
+	e3.set("12 35 28.3")
+	e4.set("- 57 5 22.32")
+def ex3():
+	e3.set("20 26 18.6")
+	e4.set("+ 17 20 32.22")		
+def ex4():
+	e3.set("2 25 10.3")
+	e4.set("+ 0 32 11.44")
+var = IntVar()
+var.set(1)
+Radiobutton(root,text="1",variable=var, value=1, command=ex1).place(
+	relx=0.05,rely=0.5)
+Radiobutton(root,text="2",variable=var, value=2, command=ex2).place(
+	relx=0.15,rely=0.5)
+Radiobutton(root,text="3",variable=var, value=3, command=ex3).place(
+	relx=0.25,rely=0.5)
+Radiobutton(root,text="4",variable=var, value=4, command=ex4).place(
+	relx=0.35,rely=0.5)
+
+root.mainloop()
