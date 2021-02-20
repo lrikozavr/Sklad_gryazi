@@ -157,12 +157,6 @@ def rep(line,s1,s2):
 	return result
 
 def print_word_h(line,s1,s2,s3,s4):
-	for i in range(len(line)):
-		if((ord(line[i])<97 or ord(line[i])>122) and ord(line[i])!=32):
-			print("Index: ",i,"\n Problem with:	",line[i])
-			exit()
-		#print(ord(line[i])-97)
-	#for line in line.split(" "):
 	for j in range(5):
 		s=""
 		for i in range(len(line)):
@@ -179,10 +173,6 @@ def print_word_h(line,s1,s2,s3,s4):
 		print(s)
 def print_word_v(line,s1,s2,s3,s4):
 	for i in range(len(line)):
-		if((ord(line[i])<97 or ord(line[i])>122) and ord(line[i])!=32):
-			print("Index: ",i,"\n Problem with:	",line[i])
-			exit()
-	for i in range(len(line)):
 		if(ord(line[i])-97>0):
 			for j in range(5):
 				s=str(alphabet[ord(line[i])-97][j][0])
@@ -190,6 +180,7 @@ def print_word_v(line,s1,s2,s3,s4):
 				s=rep(s,s3,s4)
 				print(s)
 		else: print()
+
 while (1==1):
 	line=str(input())
 	if line=="0":
@@ -197,7 +188,12 @@ while (1==1):
 	#line=line.split(" ")
 	#print(line)
 	#exit()
-	print(len(line))
+	print("Simbol count",len(line))
+	for i in range(len(line)):
+		if((ord(line[i])<97 or ord(line[i])>122) and ord(line[i])!=32):
+			print("Index: ",i,"\nProblem with:	",line[i],"\nWithout Alphabet\nTry again")		
+	#print(ord(line[i])-97)
+	#for line in line.split(" "):
 	print("Change?(y/n)")
 	if(input()=="y"):
 		print("s1:	")
