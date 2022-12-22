@@ -140,6 +140,59 @@ alphabet=([
  [" #   "],
  ["#####"]]
  ])
+
+number=([
+[[" ## "],
+ ["#  #"],
+ ["#  #"],
+ ["#  #"],
+ [" ## "]],
+[[" # "],
+ ["## "],
+ [" # "],
+ [" # "],
+ ["###"]],
+[[" ### "],
+ ["#   #"],
+ ["  ## "],
+ [" ##   "],
+ ["#####"]],
+[[" ### "],
+ ["#   #"],
+ ["  ## "],
+ ["#   #"],
+ [" ###"]],
+[["  ##"],
+ [" # #"],
+ ["####"],
+ ["   #"],
+ ["   #"]],
+[["#####"],
+ ["#    "],
+ ["#### "],
+ ["    #"],
+ ["#### "]],
+[[" ####"],
+ ["#    "],
+ ["#### "],
+ ["#   #"],
+ [" ### "]],
+[["#####"],
+ ["   # "],
+ ["  #  "],
+ [" #   "],
+ ["#    "]],
+[[" ### "],
+ ["#   #"],
+ [" ### "],
+ ["#   #"],
+ [" ### "]],
+[[" ### "],
+ ["#   #"],
+ [" ####"],
+ ["    #"],
+ [" ### "]]
+])
 #start
 for i in range(5):
 	print(str(alphabet[18][i][0])+" "+str(alphabet[19][i][0])+" "+str(alphabet[0][i][0])+" "+str(alphabet[17][i][0])+" "+str(alphabet[19][i][0]))
@@ -164,18 +217,47 @@ def print_word_h(line,s1,s2,s3,s4):
 				ex=" "
 			else:
 				ex=""
-			if (ord(line[i])-97>=0):
-				s+=ex+str(alphabet[ord(line[i])-97][j][0])
+			flag=0
+			flag_sym = "eng"
+			delta=97
+			if(ord(line[i])>=48 and ord(line[i])<=57):
+				delta = 48
+				flag=1
+				flag_sym = "num"
+			if(ord(line[i])>=97 and ord(line[i])<=122):
+				delta = 97
+				flag=1
+				flag_sym = "eng"
+			if(flag):
+				if(flag_sym == "eng"):
+					s+=ex+str(alphabet[ord(line[i])-delta][j][0])
+				if(flag_sym == "num"):
+					s+=ex+str(number[ord(line[i])-delta][j][0])
 			else:
 				s+=ex
 		s=rep(s,s1,s2)
 		s=rep(s,s3,s4)
 		print(s)
+
 def print_word_v(line,s1,s2,s3,s4):
 	for i in range(len(line)):
-		if(ord(line[i])-97>0):
+		flag=0
+		flag_sym = "eng"
+		delta=97
+		if(ord(line[i])>=48 and ord(line[i])<=57):
+			delta = 48
+			flag=1
+			flag_sym = "num"
+		if(ord(line[i])>=97 and ord(line[i])<=122):
+			delta = 97
+			flag=1
+			flag_sym = "eng"
+		if(flag):
 			for j in range(5):
-				s=str(alphabet[ord(line[i])-97][j][0])
+				if(flag_sym == "eng"):
+					s=str(alphabet[ord(line[i])-delta][j][0])
+				if(flag_sym == "num"):
+					s=str(number[ord(line[i])-delta][j][0])
 				s=rep(s,s1,s2)
 				s=rep(s,s3,s4)
 				print(s)
@@ -190,8 +272,10 @@ while (1==1):
 	#exit()
 	print("Simbol count",len(line))
 	for i in range(len(line)):
-		if((ord(line[i])<97 or ord(line[i])>122) and ord(line[i])!=32):
-			print("Index: ",i,"\nProblem with:	",line[i],"\nWithout Alphabet\nTry again")		
+		if(ord(line[i])<48 or ord(line[i])>57):
+			if((ord(line[i])<97 or ord(line[i])>122) and ord(line[i])!=32):
+				print("Index: ",i,"\nProblem with:	",line[i],"\nWithout Alphabet\nTry again\nCode number:",ord(line[i]))
+				exit()
 	#print(ord(line[i])-97)
 	#for line in line.split(" "):
 	print("Change?(y/n)")
@@ -210,6 +294,8 @@ while (1==1):
 	if (flag=="h"):
 		print_word_h(line,s1,s2,s3,s4)
 	elif (flag=="v"):
+		print_word_v(line,s1,s2,s3,s4)
+	else:
 		print_word_v(line,s1,s2,s3,s4)
 ##### ####       ## ### #   # ### ##    #  ####
   #   ## ##     # #  #  ##  #  #  # #   # #    #
