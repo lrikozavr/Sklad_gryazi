@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
 
+path_text = 'Texts'
+path_review = 'Reviews'
+path_rate = 'Rates'
+path_user = 'Users'
+
+path_text_log = f'{path_text}/logs.bin'
+path_review_log = f'{path_review}/logs.bin'
+path_text_log = f'{path_text}/logs.bin'
+path_user_log = f'{path_user}/logs.bin'
+
+path_text_data = f'{path_text}/data'
+path_review_data = f'{path_review}/data'
+path_text_data = f'{path_text}/data'
+path_user_data = f'{path_user}/data'
+
+
 def read_main_file(chat_id,save_path):
     dirname = chat_id
     path = f'{save_path}/{dirname}'
