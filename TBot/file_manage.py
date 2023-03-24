@@ -7,13 +7,24 @@ path_user = 'Users'
 
 path_text_log = f'{path_text}/logs.bin'
 path_review_log = f'{path_review}/logs.bin'
-path_text_log = f'{path_text}/logs.bin'
 path_user_log = f'{path_user}/logs.bin'
 
 path_text_data = f'{path_text}/data'
 path_review_data = f'{path_review}/data'
-path_text_data = f'{path_text}/data'
 path_user_data = f'{path_user}/data'
+
+text_author_comment = 'author_comment.txt'  #path_text_data/{code}/author_comment
+text_data = 'data.txt'                      #path_text_data/{code}/text_data
+text_reviews_code = 'reviews_code.txt'      #path_text_data/{code}/reviews_code
+
+review_data = 'data.txt' #path_review_data/{code}/reviews_data
+
+rates_reviewer = 'rates_reviewer' #path_rate/{code_withoutrate}/rates_reviewer
+rates_author = 'rates_author'
+rates_viewer = 'rates_viewer'
+
+users_log_data = 'data.txt' #path_user_data/{code}/logs.txt
+users_log_bio = 'bio.txt' #path_user_data/{code}/logs.txt
 
 
 def read_main_file(chat_id,save_path):

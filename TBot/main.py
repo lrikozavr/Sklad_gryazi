@@ -15,6 +15,15 @@ token = ""
 app = Flask(__name__)
 
 
+global_stat = {
+    'now_text_count': '',
+    'now_reviews_count': '',
+    'now_users_count': '',
+    'for_all_time_text_count': '',
+    'for_all_time_reviews_count': '',
+    'for_all_time_users_count': '',
+}
+
 
 def format_date(date):
     from datetime import datetime

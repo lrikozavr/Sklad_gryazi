@@ -41,7 +41,7 @@ def write_value(line,a,b,text):
     return new_line
 
 def read_file_line(filename,length_line,number):
-    f = open(filename,"r")
+    f = open(filename,"rb")
     f.seek(length_line*number)
     text = f.read(length_line)
     f.close()
@@ -51,6 +51,42 @@ def write_file_line(filename,text):
     f = open(filename,'a')
     f.write(text)
     f.close()
+
+def binary_search(object,filename,desired_number):
+    name = 'id'
+    number = 0
+    if(desired_number > 99e+8):
+        number = desired_number - int(99e+8)
+    elif(desired_number > 88e+8):
+        number = desired_number - int(88e+8)
+    else:
+        number = desired_number - int(7777e+6)
+
+    line = read_file_line(filename,object.length,0)
+    object.line = line
+    number_1 = object.read(name)
+    
+    line = read_file_line(filename,object.length,object.length*number)
+    object.line = line
+    number_2 = object.read(name)
+
+    if(number > number_1 and number < number_2):
+        number_1_2 = (number + 0) // 2
+        
+        line = read_file_line(filename,object.length,object.length*number_1_2)
+        object.line = line
+        number_1_2 = object.read(name)
+
+        if(number > number_1 and number < number_1_2):
+            return
+        elif(number > number_1_2 and number < number_2):
+            return
+        elif(number == number_1_2):
+            return
+    elif(not (number == number_1 or number == number_2)):
+        Exception('number line out of list')
+
+    return read_file_line(filename,object.length,number)
 
 class log_line:
     def set_line(self,line):
@@ -104,7 +140,8 @@ class log_text_line(log_line):
     column_index = pd.DataFrame(np.array([[5,5,3,1,2,5,3,1,2],
                                             [0, 5, 10, 13, 14, 16, 21, 24, 25],
                                             [4, 9, 12, 13, 15, 20, 23, 24, 26]]), 
-                                            columns=['text_id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
+                                            columns=['id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
+    #7777000000
     length = 27
     line = [chr(0) for i in range(length)]
 
@@ -114,7 +151,7 @@ class log_text_line(log_line):
     def read(self, name):
         if(len(self.line) == self.length):
             match name:
-                case 'text_id' | 'author_id' | 'size' | 'review' | 'debates':
+                case 'id' | 'author_id' | 'size' | 'review' | 'debates':
                     return self.read_func(name,1)
                 case 'review_m' | 'rates_r' | 'rates_a' | 'rates_v':
                     return self.read_func(name,2)
@@ -127,7 +164,7 @@ class log_text_line(log_line):
 
     def write(self, name, text):
             match name:
-                case 'text_id' | 'author_id' | 'size' | 'review' | 'debates':
+                case 'id' | 'author_id' | 'size' | 'review' | 'debates':
                     return self.write_func(name,text,1)
                 case 'review_m' | 'rates_r' | 'rates_a' | 'rates_v':
                     return self.write_func(name,text,2)
@@ -141,7 +178,8 @@ class log_review_line(log_line):
     column_index = pd.DataFrame(np.array([[5,5,5,2,5,3,1,1],
                                             [0, 5, 10, 15, 17, 22, 25, 26],
                                             [4, 9, 14, 16, 21, 24, 25, 26]]), 
-                                            columns=['text_id','review_id','author_id','size','rates_r','rates_a','rates_v','deep'])
+                                            columns=['text_id','id','author_id','size','rates_r','rates_a','rates_v','deep'])
+    #8800000000
     length = 27
     line = [chr(0) for i in range(length)] #'00000000000000000000'
     
@@ -151,7 +189,7 @@ class log_review_line(log_line):
     def read(self, name):
         if(len(self.line) == self.length):
             match name:
-                case 'text_id' | 'review_id' | 'author_id' | 'size' | 'deep':
+                case 'text_id' | 'id' | 'author_id' | 'size' | 'deep':
                     return self.read_func(name,1)
                 case 'rates_r' | 'rates_a' | 'rates_v':
                     return self.read_func(name,2)
@@ -165,7 +203,7 @@ class log_review_line(log_line):
 
     def write(self, name, text):
         match name:
-            case 'text_id' | 'review_id' | 'author_id' | 'size' | 'deep':
+            case 'text_id' | 'id' | 'author_id' | 'size' | 'deep':
                 self.write_func(name,text,1)
             case 'rates_r' | 'rates_a' | 'rates_v':
                 self.write_func(name,text,2)
@@ -176,11 +214,12 @@ class log_review_line(log_line):
     
 
 class log_user_line(log_line):
-    column_index = pd.DataFrame(np.array([[5,1,2,2,2,3,5,3,1,2],
-                                          [0, 5, 6, 8, 10, 12, 15, 20, 23, 24],
-                                          [4, 5, 7, 9, 11, 14, 19, 22, 23, 25]]), 
-                                            columns=['id','class','age','count_t','count_r','count_rate','rates_r','rates_a','rates_v','rep'])
-    length = 26
+    column_index = pd.DataFrame(np.array([[5,5,1,2,2,2,3,5,3,1,2],
+                                          [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29],
+                                          [4, 9, 10, 12, 14, 16, 19, 24, 27, 28, 30]]), 
+                                            columns=['id','tg_id','class','age','count_t','count_r','count_rate','rates_r','rates_a','rates_v','rep'])
+    #9900000000
+    length = 31
     line = [chr(0) for i in range(length)]
     
     def __init__(self):
@@ -189,7 +228,7 @@ class log_user_line(log_line):
     def read(self, name):
         if(len(self.line) == self.length):
             match name:
-                case 'id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
+                case 'id' | 'tg_id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
                     return self.read_func(name,1)
                 case 'class' | 'rates_r' | 'rates_a' | 'rates_v':
                     return self.read_func(name,2)
@@ -204,7 +243,7 @@ class log_user_line(log_line):
 
     def write(self, name, text):
         match name:
-            case 'id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
+            case 'id' | 'tg_id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
                 self.write_func(name,text,1)
             case 'class' | 'rates_r' | 'rates_a' | 'rates_v':
                 self.write_func(name,text,2)
@@ -227,7 +266,7 @@ def write_file_log(filename,text):
     f.close()
 
 class log_users:
-    
+    #можна додати бінарний пошук по номеру
     bio = {
         "name": "",
         "number": "",
@@ -297,7 +336,7 @@ def index_column(mass):
     #return index_m
     '''
 
-#index_column([5,5,5,2,5,3,1,1])
+#index_column([5,5,1,2,2,2,3,5,3,1,2])
 '''
 g = log_users()
 g.write('text_id',100101010)
