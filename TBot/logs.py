@@ -2,7 +2,9 @@
 import pandas as pd
 import numpy as np
 
-#Перевернута дія
+from file_path import path_review_log,path_statistic_log,path_text_log,path_user_log
+
+# Convert chat to int
 def char_to_int(text):
     text = str(text)
     number = 0
@@ -10,6 +12,7 @@ def char_to_int(text):
         number += ord(text[i])*pow(256,i)
     return number
 
+# Convert int to char
 def int_to_char(number):
     number = int(number)
     text = ''
@@ -21,12 +24,14 @@ def int_to_char(number):
             break
     return text
 
+# read text from line by [a,b] range
 def read_value(line,a,b):
     text = ''
     for i in range(a,b+1,1):
         text += line[i]
     return text
 
+# write text in line by [a,b] range
 def write_value(line,a,b,text):
     ii = 0
     new_line = ''
@@ -40,72 +45,82 @@ def write_value(line,a,b,text):
         print(f"Length log_text_line isn't whole, actual length ---> {len(new_line)}, when {len(line)} required")
     return new_line
 
-def read_file_line(filename,length_line,number):
-    f = open(filename,"rb")
-    f.seek(length_line*number)
-    text = f.read(length_line)
-    f.close()
-    return text
-
-def write_file_line(filename,text):
-    f = open(filename,'a')
-    f.write(text)
-    f.close()
-
-def binary_search(object,filename,desired_number):
-    name = 'id'
-    number = 0
-    if(desired_number > 99e+8):
-        number = desired_number - int(99e+8)
-    elif(desired_number > 88e+8):
-        number = desired_number - int(88e+8)
-    else:
-        number = desired_number - int(7777e+6)
-
-    line = read_file_line(filename,object.length,0)
-    object.line = line
-    number_1 = object.read(name)
+class log_file:
+    def __init__(self):
+        pass
     
-    line = read_file_line(filename,object.length,object.length*number)
-    object.line = line
-    number_2 = object.read(name)
+    # filename ще можна задавати автоматично, якщо знати назву класу об'єкту
+    def __init__(self,filename):
+        #filename = globals()[f'path_{class_name}_log']
+        self.filename = filename
+    
+    #single line file log
+    def read_file_line(self,number):
+        f = open(self.filename,"rb")
+        f.seek(self.length*number)
+        self.line = f.read(self.length)
+        f.close()
 
-    if(number > number_1 and number < number_2):
-        number_1_2 = (number + 0) // 2
-        
-        line = read_file_line(filename,object.length,object.length*number_1_2)
-        object.line = line
-        number_1_2 = object.read(name)
+    def rewrite_file_line(self,number):
+        f = open(self.filename,'r+')
+        if(self.length == len(self.line)):
+        #print(f.seekable())
+        #if(f.seekable()):
+            f.seek(self.length*number,0)
+            f.write(self.line)
+        else:
+            Exception(f'length of line not compare with text, actual length ---> {len(self.line)}, length required ---> {length_line}')
+        f.close()
+    #rewrite_file_line('1.txt',5,4,'00000')
 
-        if(number > number_1 and number < number_1_2):
-            return
-        elif(number > number_1_2 and number < number_2):
-            return
-        elif(number == number_1_2):
-            return
-    elif(not (number == number_1 or number == number_2)):
-        Exception('number line out of list')
+    def write_file_line(self):
+        f = open(self.filename,'a')
+        f.write(self.line)
+        f.close()
+    
+    def read_file_line_value(self,name,number_line):
+        f = open(self.filename,'rb')
+        f.seek(self.length*number_line,0)
+        f.seek(self.column_index[name].iloc[1],1)
+        text = f.read(self.column_index[name].iloc[0])
+        f.close()
+        if(name in self.bin_value_name_mass):
+            text = char_to_int(text)
+        return text
+    
+    def rewrite_file_line_value(self,name,number_line,text):
+        f = open(self.filename,'r+')
+        f.seek(self.length*number_line,0)
+        f.seek(self.column_index[name].iloc[1],1)
+        if(name in self.bin_value_name_mass):
+            text = int_to_char(text)
+        if(len(text) < self.column_index[name].iloc[0]):
+            for iii in range(len(text), self.column_index[name].iloc[0] + 1,1):
+                text += chr(0)
+        f.write(text)
+        f.close()
 
-    return read_file_line(filename,object.length,number)
 
 class log_line:
     def set_line(self,line):
         self.line = line
 
-    def read_func(self,name,flag):
-        match flag:
-            case 1: 
-                return char_to_int(read_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2]))
-            case 2:
-                return read_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2])
-            case 0:
+    def read(self,name):
+        if(len(self.line) == self.length):
+            if(name in self.bin_value_name_mass):
+                    return char_to_int(read_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2]))
+            elif(name in self.str_value_name_mass):
+                    return read_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2])
+            elif(name == 'all'):
                 mass = pd.DataFrame([np.zeros(len(self.column_index.columns))],columns=self.column_index.columns)
                 for column in self.column_index.columns:
                     mass[column].iloc[0] = self.read(column)
                 return mass
-                #print(self.line)
-            case _:
+            else:
                 raise Exception('I don`t know this column name --> ', name)
+        else:
+            raise Exception(f"Length log_text_line isn't whole, actual length ---> {len(self.line)}, when {self.length} required")
+
 
     def write_sup_func(self,name,text):
         if(len(text) < self.column_index[name].iloc[0]):
@@ -115,206 +130,206 @@ class log_line:
             print(f"{name} have value out of limit")
         return write_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2],text)
     
-    def write_func(self, name, text, flag):
-        match flag:
-            case 1:
-                #можлива помилка
-                if(not type(text) is int):
-                    text = int(text)
-                text = int_to_char(text)
-                self.line = self.write_sup_func(name,text)
-            case 2:
-                if(not type(text) is str):
-                    text = str(text)
-                self.line = self.write_sup_func(name,text)
-            case 0:
-                for column in self.column_index.columns:
-                    self.write(column,text[column].iloc[0])
-            case _:
-                raise Exception('I don`t know this column name --> ', name)
+    def write(self, name, text):
+        if(name in self.bin_value_name_mass):
+            if(not type(text) is int):
+                text = int(text)
+            text = int_to_char(text)
+            self.line = self.write_sup_func(name,text)
+        elif(name in self.str_value_name_mass):
+            if(not type(text) is str):
+                text = str(text)
+            self.line = self.write_sup_func(name,text)
+        elif(name == 'all'):
+            for column in self.column_index.columns:
+                self.write(column,text[column].iloc[0])
+        else:
+            raise Exception('I don`t know this column name --> ', name)
+
+    def line_format(self):
+        output_line = 'column\tsize\tplace\n'
+        for column in self.column_index.columns:
+            output_line += f'{column}\t{self.column_index[column].iloc[0]}\t{self.column_index[column].iloc[1]}-{self.column_index[column].iloc[2]}'
+            output_line += '\n'
+        print(output_line)
+        #return output_line
 
     def show(self):
         print(self.line)
 
-class log_text_line(log_line):
-    column_index = pd.DataFrame(np.array([[5,5,3,1,2,5,3,1,2],
-                                            [0, 5, 10, 13, 14, 16, 21, 24, 25],
-                                            [4, 9, 12, 13, 15, 20, 23, 24, 26]]), 
-                                            columns=['id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
-    #7777000000
-    length = 27
+class log_text_line(log_line,log_file):
+    #7000000000
+    index_value = 7e+9
+    filename = path_text_log
+    class_name = 'text'
+    # line struct
+    column_index = pd.DataFrame(np.array([[1,5,5,3,1,2,5,3,1,2],
+                                            [0, 1, 6, 11, 14, 15, 17, 22, 25, 26],
+                                            [0, 5, 10, 13, 14, 16, 21, 24, 25, 27]]), 
+                                            columns=['delete_flag','id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
+    bin_value_name_mass = ['id','author_id','size','review','debates']
+    str_value_name_mass = ['delete_flag','review_m','rates_r','rates_a','rates_v']
+    
+    length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
     line = [chr(0) for i in range(length)]
 
     def __init__(self):
         pass
 
-    def read(self, name):
-        if(len(self.line) == self.length):
-            match name:
-                case 'id' | 'author_id' | 'size' | 'review' | 'debates':
-                    return self.read_func(name,1)
-                case 'review_m' | 'rates_r' | 'rates_a' | 'rates_v':
-                    return self.read_func(name,2)
-                case 'all':
-                    return self.read_func(name,0)
-                case _:
-                    self.read_func(name, -1)
-        else:
-            raise Exception(f"Length log_text_line isn't whole, actual length ---> {len(self.line)}, when {self.length} required")
 
-    def write(self, name, text):
-            match name:
-                case 'id' | 'author_id' | 'size' | 'review' | 'debates':
-                    return self.write_func(name,text,1)
-                case 'review_m' | 'rates_r' | 'rates_a' | 'rates_v':
-                    return self.write_func(name,text,2)
-                case 'all':
-                    return self.write_func(name,text,0)
-                case _:
-                    self.write_func(name,text, -1)
-
-
-class log_review_line(log_line):
-    column_index = pd.DataFrame(np.array([[5,5,5,2,5,3,1,1],
-                                            [0, 5, 10, 15, 17, 22, 25, 26],
-                                            [4, 9, 14, 16, 21, 24, 25, 26]]), 
-                                            columns=['text_id','id','author_id','size','rates_r','rates_a','rates_v','deep'])
-    #8800000000
-    length = 27
-    line = [chr(0) for i in range(length)] #'00000000000000000000'
+class log_review_line(log_line,log_file):
+    #8000000000
+    index_value = 8e+9
+    filename = path_review_log
+    class_name = 'review'
+    # line struct
+    column_index = pd.DataFrame(np.array([[1,5,5,5,2,5,3,1,1],
+                                            [0, 1, 6, 11, 16, 18, 23, 26, 27],
+                                            [0, 5, 10, 15, 17, 22, 25, 26, 27]]), 
+                                            columns=['delete_flag','text_id','id','author_id','size','rates_r','rates_a','rates_v','deep'])
+    bin_value_name_mass = ['text_id','id','author_id','size','deep']
+    str_value_name_mass = ['delete_flag','rates_r','rates_a','rates_v']
     
-    def __init__(self):
-        pass
-    
-    def read(self, name):
-        if(len(self.line) == self.length):
-            match name:
-                case 'text_id' | 'id' | 'author_id' | 'size' | 'deep':
-                    return self.read_func(name,1)
-                case 'rates_r' | 'rates_a' | 'rates_v':
-                    return self.read_func(name,2)
-                case 'all':
-                    return self.read_func(name,0)
-                #print(self.line)
-                case _:
-                    self.read_func(name,-1)
-        else:
-            raise Exception(f"Length log_review_line isn't whole, actual length ---> {len(self.line)}, when {self.length} required")
-
-    def write(self, name, text):
-        match name:
-            case 'text_id' | 'id' | 'author_id' | 'size' | 'deep':
-                self.write_func(name,text,1)
-            case 'rates_r' | 'rates_a' | 'rates_v':
-                self.write_func(name,text,2)
-            case 'all':
-                self.write_func(name,text,0)
-            case _:
-                self.write_func(name,text,-1)
-    
-
-class log_user_line(log_line):
-    column_index = pd.DataFrame(np.array([[5,5,1,2,2,2,3,5,3,1,2],
-                                          [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29],
-                                          [4, 9, 10, 12, 14, 16, 19, 24, 27, 28, 30]]), 
-                                            columns=['id','tg_id','class','age','count_t','count_r','count_rate','rates_r','rates_a','rates_v','rep'])
-    #9900000000
-    length = 31
+    length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
     line = [chr(0) for i in range(length)]
     
     def __init__(self):
         pass
     
-    def read(self, name):
-        if(len(self.line) == self.length):
-            match name:
-                case 'id' | 'tg_id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
-                    return self.read_func(name,1)
-                case 'class' | 'rates_r' | 'rates_a' | 'rates_v':
-                    return self.read_func(name,2)
-                case 'all':
-                    return self.read_func(name,0)
-                #print(self.line)
-                case _:
-                    self.read_func(name,-1)
-        else:
-            raise Exception(f"Length log_review_line isn't whole, actual length ---> {len(self.line)}, when {self.length} required")
-            
 
-    def write(self, name, text):
-        match name:
-            case 'id' | 'tg_id' | 'age' | 'count_t' | 'count_r' | 'count_rate' | 'rep':
-                self.write_func(name,text,1)
-            case 'class' | 'rates_r' | 'rates_a' | 'rates_v':
-                self.write_func(name,text,2)
-            case 'all':
-                self.write_func(name,text,0)
+from file_path import rates_author,rates_reviewer,rates_viewer,path_rate_data
+class log_rate_line(log_line,log_file):
+    #10000000000
+    index_value = 1e+10
+    #filename = ''
+    class_name = 'rate'
+    # line struct
+    bin_value_name_mass = ['id','author_id']
+    str_value_name_mass = ['rate']
+    #column_index = ''
+    #length = 15
+    def __init__(self,user_class,id):
+        match user_class:
+            case 'reviewer':
+                self.column_index = pd.DataFrame(np.array([[5,5,5],
+                                          [0, 5, 10],
+                                          [4, 9, 14]]), 
+                                            columns=['rate','id','author_id'])
+                self.filename = f'{path_rate_data}/{id}/{rates_reviewer}'
+            case 'author':
+                self.column_index = pd.DataFrame(np.array([[3,5,5],
+                                          [0, 3, 8],
+                                          [2, 7, 12]]), 
+                                            columns=['rate','id','author_id'])
+                self.filename = f'{path_rate_data}/{id}/{rates_author}'
+            case 'viewer':
+                self.column_index = pd.DataFrame(np.array([[1,5,5],
+                                          [0, 1, 6],
+                                          [0, 5, 10]]), 
+                                            columns=['rate','id','author_id'])
+                self.filename = f'{path_rate_data}/{id}/{rates_viewer}'
             case _:
-                self.write_func(name,text,-1)
+                Exception('go fuck yourself')
+        self.length = self.column_index[self.column_index.columns[len(self.column_index.columns)-1]].iloc[2] + 1
+        self.line = [chr(0) for i in range(self.length)]
+
+
+class log_user_line(log_line,log_file):
+    #9000000000
+    index_value = 9e+9
+    filename = path_user_log
+    class_name = 'user'
+    # line struct
+    column_index = pd.DataFrame(np.array([[1,5,5,1,2,2,2,3,5,3,1,2],
+                                          [0, 1, 6, 11, 12, 14, 16, 18, 21, 26, 29, 30],
+                                          [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29, 31]]), 
+                                            columns=['delete_flag','id','tg_id','class','age','count_t','count_r','count_rate','rates_r','rates_a','rates_v','rep'])
+    bin_value_name_mass = ['id','tg_id','age','count_t','count_r','count_rate','rep']
+    str_value_name_mass = ['delete_flag','class','rates_r','rates_a','rates_v']
+    
+    length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
+    line = [chr(0) for i in range(length)]
+    
+    def __init__(self):
+        pass
+    
 
 import json
-
-def read_file_log(filename):
-    f = open(filename,'r')
-    text = f.readline()
-    f.close()
-    return text
-
-def write_file_log(filename,text):
-    f = open(filename,'w')
-    f.write(str(text))
-    f.close()
-
-class log_users:
+from file_path import path_user_data,users_log_bio,users_log_rate_id,users_log_review_id,users_log_text_id
+class log_users(log_line):
     #можна додати бінарний пошук по номеру
-    bio = {
-        "name": "",
-        "number": "",
-        "command": "",
-        "status": "",
-        "bio": "",
-    }
-    data = {
-        "text_id": "",
-        "review_id": "",
-    }
+
+    bin_value_name_mass = []
+    str_value_name_mass = []
+    def __init__(self, name, tg_id):
+        match name:
+            case 'bio':    
+                self.column_index = pd.DataFrame(np.array([[128,5,5,128,128,1024],
+                                                            [0, 128, 133, 138, 266, 394],
+                                                            [127, 132, 137, 265, 393, 1417]]), 
+                                                            columns=['name','id','tg_id','command','status','bio'])
+                self.filename = f'{path_user_data}/{tg_id}/{users_log_bio}'
+                self.bin_value_name_mass = ['id','tg_id']
+                self.str_value_name_mass = ['name','command','status','bio']
+
+            case 'text_id' | 'review_id' | 'rate_id':
+                # for review_id and text_id at once
+                self.column_index = pd.DataFrame(np.array([[5],
+                                                            [0],
+                                                            [4]]), 
+                                                            columns=['id'])
+                name = globals()[f'users_log_{name}']
+                self.filename = f'{path_user_data}/{tg_id}/{name}'
+                self.bin_value_name_mass = ['id']
+                self.str_value_name_mass = []
+
+
+        self.length = self.column_index[self.column_index.columns[len(self.column_index.columns)-1]].iloc[2] + 1
+        self.line = [chr(0) for i in range(self.length)]
 
     def __init__(self):
         pass
 
     def give(self,text,flag):
-        if(flag == 'data'):
-            self.data = json.loads(text)
-        elif(flag == 'bio'):
+        if(flag == 'bio'):
             self.bio = json.loads(text)
         else:
             raise Exception(f"log_users don't have [{flag}] atribute")
         
     def get(self,flag):
-        if(flag == 'data'):
-            return json.dumps(self.data)
-        elif(flag == 'bio'):
+        if(flag == 'bio'):
             return json.dumps(self.bio)
         else:
             raise Exception(f"log_users don't have [{flag}] atribute")
 
     def read(self,name):
-        if name in self.data:
-            return self.data[name]
-        elif name in self.bio:
+        if name in self.bio:
             return self.bio[name]
+        elif( name == 'text_id' or name == 'review_id'):
+            return self.read_func('id',1)
         else:
             raise Exception(f"log_users don't have [{name}] atribute")
     
     def write(self,name,text):
-        if name in self.data:
-            self.data[name] = text
-        elif name in self.bio:
+        if name in self.bio:
             self.bio[name] = text
+        elif( name == 'text_id' or name == 'review_id'):
+            self.write_func('id',text,1)
         else:
             raise Exception(f"log_users don't have [{name}] atribute")
 
-
+class log_statistic(log_line,log_file):
+    filename = path_statistic_log
+    class_name = 'statistic'
+    column_index = pd.DataFrame(np.array([[5,5,5,5,5,5,5,5],
+                                          [0, 5, 10, 15, 20, 25, 30, 35],
+                                          [4, 9, 14, 19, 24, 29, 34, 39]]), 
+                                            columns=['now_count_text','now_count_review','now_count_rate','now_count_user','all_count_text','all_count_review','all_count_rate','all_count_user'])
+    bin_value_name_mass = ['now_count_text','now_count_review','now_count_rate','now_count_user','all_count_text','all_count_review','all_count_rate','all_count_user']
+    str_value_name_mass = []
+    length = 40
+    line = [chr(0) for i in range(length)]
+      
 
 def index_column(mass):
     #mass = [3,5,2,5,3,1,1]
@@ -336,7 +351,11 @@ def index_column(mass):
     #return index_m
     '''
 
-#index_column([5,5,1,2,2,2,3,5,3,1,2])
+#index_column([128,5,5,128,128,1024])
+#index_column([5,5,5])
+#index_column([3,5,5])
+#index_column([1,5,5])
+
 '''
 g = log_users()
 g.write('text_id',100101010)
@@ -351,17 +370,17 @@ print(h.get('data'))
 print(h.read('text_id'))
 '''
 #print(f.read('text_i'))
-'''
+
 #print(len(int_to_char(0)))
 f = log_text_line()
-data = pd.DataFrame(np.array([[45,'aaaaaaaaaaa',8000000000,90000,'R',20000,12345,123,1,20000]]), columns=['number','name','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
+data = pd.DataFrame(np.array([[0,7000000045,9000000001,90000,'R',20000,12345,123,1,20000]]), columns=['delete_flag','id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
 f.write('all',data)
 print(f.read('all'))
-f.write('size','0')
+f.write('size','90')
 print(f.read('all'))
-#print(f.read('name'))
+print(f.read('id'))
 #f.show()
-
+'''
 g = log_review_line()
 data = pd.DataFrame(np.array([[1111,1145,800000000,7000,12040,123,1,20]]), columns=['text_id','review_id','author_id','size','rates_r','rates_a','rates_v','deep'])
 g.write('all',data)
