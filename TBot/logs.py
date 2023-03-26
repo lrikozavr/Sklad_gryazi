@@ -256,7 +256,7 @@ class log_user_line(log_line,log_file):
 
 import json
 from file_path import path_user_data,users_log_bio,users_log_rate_id,users_log_review_id,users_log_text_id
-class log_users(log_line):
+class log_users(log_line,log_file):
     #можна додати бінарний пошук по номеру
 
     bin_value_name_mass = []
@@ -289,34 +289,6 @@ class log_users(log_line):
 
     def __init__(self):
         pass
-
-    def give(self,text,flag):
-        if(flag == 'bio'):
-            self.bio = json.loads(text)
-        else:
-            raise Exception(f"log_users don't have [{flag}] atribute")
-        
-    def get(self,flag):
-        if(flag == 'bio'):
-            return json.dumps(self.bio)
-        else:
-            raise Exception(f"log_users don't have [{flag}] atribute")
-
-    def read(self,name):
-        if name in self.bio:
-            return self.bio[name]
-        elif( name == 'text_id' or name == 'review_id'):
-            return self.read_func('id',1)
-        else:
-            raise Exception(f"log_users don't have [{name}] atribute")
-    
-    def write(self,name,text):
-        if name in self.bio:
-            self.bio[name] = text
-        elif( name == 'text_id' or name == 'review_id'):
-            self.write_func('id',text,1)
-        else:
-            raise Exception(f"log_users don't have [{name}] atribute")
 
 class log_statistic(log_line,log_file):
     filename = path_statistic_log
