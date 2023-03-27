@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 from file_path import *
+import pandas as pd
+import numpy as np
 
 from logs import log_review_line,log_text_line,log_user_line,log_rate_line,log_users,log_statistic
+from logs import get_object_id,get_number_id,check_class_id,get_class_index
+
 global_class_value = ['text','review','rate','user']
 global_class_value_short = ['t','re','ra','u'] # maybe unnecessary
 #user class
@@ -20,6 +24,7 @@ def write_file_log(filename,text):
     f.write(str(text))
     f.close()
 
+################################################################
 #single line file log
 def read_file_line(filename,length_line,number):
     f = open(filename,"rb")
@@ -45,49 +50,6 @@ def write_file_line(filename,text):
     f = open(filename,'a')
     f.write(text)
     f.close()
-
-# виводить назву класу до якого належить це id
-# не узагальнена функція
-def check_class_id(id):
-    n = str(id)
-    match n[0]:
-        case '1':
-            return 'rate'
-        case '9':
-            return 'user'
-        case '8':
-            return 'review'
-        case '7':
-            return 'text'
-        case _:
-            Exception('unknown id number --> ', id)
-# виводить номер об'єкту класу виходячи зі значення id
-# не узагальнена функція
-def get_number_id(id):
-    match check_class_id(id):
-        case 'rate':
-            return id - 1e+10
-        case 'user':
-            return id - 9e+9
-        case 'review':
-            return id - 8e+9
-        case 'text':
-            return id - 7e+9
-
-def get_object_id(id,user_class=user_class_value[0]): #?
-    match check_class_id(id):
-        case 'rate':
-            value = log_rate_line(user_class=user_class)
-            return value
-        case 'user':
-            value = log_user_line()
-            return value
-        case 'review':
-            value = log_review_line()
-            return value
-        case 'text':
-            value = log_text_line()
-            return value
 
 # не узагальнена функція
 # desired_id = id
@@ -120,8 +82,32 @@ def binary_id_search(object,filename,desired_id):
                 return b
 
     return bin(0,get_number_id(desired_id),desired_id)
+################################################################
+
+import os
 
 class use_file:
+    def create_id(self):
+        stat = log_statistic()
+        all_count_class_name = stat.read_file_line_value(f'all_count_{self.class_name}',0)
+        index = str(get_class_index(self.class_name))
+        null_line = [chr(0) for i in range(9 - len(str(all_count_class_name)))]
+        id = index + null_line + str(all_count_class_name)
+        return id
+    
+    def create_directory(self,name):
+        save_path = globals()[f'path_{self.class_name}_data']
+        dir_name = f"{save_path}/{name}"
+        if not os.path.isdir(dir_name):
+            os.mkdir(dir_name)
+
+    def stat_increment(self):
+        stat = log_statistic()
+        all_count_class_name = stat.read_file_line_value(f'all_count_{self.class_name}',0)
+        now_count_class_name = stat.read_file_line_value(f'now_count_{self.class_name}',0)
+        stat.rewrite_file_line_value(f'all_count_{self.class_name}',0,int(all_count_class_name)+1)
+        stat.rewrite_file_line_value(f'now_count_{self.class_name}',0,int(now_count_class_name)+1)
+
     def add_file():
         return
     
@@ -134,47 +120,93 @@ class use_file:
     def read_file():
         return
 
-class text_file(log_text_line):
+class text_file(log_text_line,use_file):
     d = ''    
-    def add_text():
-        stat = log_statistic()
-        read_file_line(path_statistic_log,stat.length,0)
-        text_id = ''
+    def add_text(self,users_tg_id,text):
         # create text_id to text
-        # make folder (check if folder already exist)
-        # path_text_data/{text_id}
+        text_id = self.create_id()
+        # make folder (check if folder already exist) path_text_data/{text_id}
+        self.create_directory(text_id)
+        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(text_id)
         # add line to path_text_log
+        user = log_users('bio',users_tg_id)
+        user_id = user.read_file_line_value('id',0)
+        #?
+        del user
+        #?
+        # len(text)? під питанням
+        line = pd.DataFrame(np.array([0,text_id,user_id,len(text),'W',0,00000,000,0,0]), columns=self.column_index.columns)
+        self.write_line('all',line)
+        self.write_file_line()
         # create 'reviews_list_code' file
+        open(f'{path_data}/{text_reviews_code}','w').close()
         # create 'author_comment' file
+        open(f'{path_data}/{text_author_comment}','w').close()
         # create 'data_text' file and add text from telegraph in
+        f = open(f'{path_data}/{text_data}','w')
+        f.write('some telegraph shit',text)
+        f.close()
         # add text_id to user_log_text_id by path_user_data/{author_id}
-        # change count in path_user_log, global statistic
+        user = log_users('text_id',users_tg_id)
+        user.write_line('id',text_id)
+        user.write_file_line()
+        #?
+        del user
+        #?
+        # change count in path_user_log
+        user = log_user_line()
+        number_line = user.binary_id_search(user_id)
+        count_text = user.read_file_line_value('çount_t',number_line)
+        user.rewrite_file_line_value('çount_t',number_line,count_text + 1)
+        # change count in global_statistic
+        self.stat_increment()
         return
     
-    def del_text():
+    def del_text(self,text_id):
         # change in file path_text_log value in 'delete_flag' column, from 0 to 1
+        number_line = self.binary_id_search(text_id)
+        self.rewrite_file_line_value('delete_flag',number_line,1)
         # add line to path_text_del_list
+        # ?
         # by some time delete all in loop
+        # ?
         return
     
-    def restore_text():
+    def restore_text(self,text_id):
         # change in file path_text_log value in 'delete_flag' column, from 1 to 0
+        number_line = self.binary_id_search(text_id)
+        self.rewrite_file_line_value('delete_flag',number_line,0)
         # del line in path_text_del_list
-        return
+        # ?
+        #return
     
-    def edit_text():
+    def edit_text(self,text_id,text):
         # change text in path_text_data/{text_id}/text_data
+        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(text_id)
+        f = open(f'{path_data}/{text_data}','w')
+        f.write(text)
+        f.close()
         # change in file path_text_log value in 'size' column
-        return
+        size = len(text)
+        #
+        number_line = self.binary_id_search(text_id)
+        self.rewrite_file_line_value('size',number_line,size)
+        #return
     
-    def read_text():
+    def read_text(self,text_id):
         # read text in path_text_data/{text_id}/text_data
-        return
+        number_line = self.binary_id_search(text_id)
+        size = self.read_file_line_value('size',number_line)
+        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(text_id)
+        f = open(f'{path_data}/{text_data}','r')
+        text = f.read(size)
+        return text
     
-    def info_text(self):
+    def info_text(self,text_id):
         # return path_text_log
-        self.line_format
-        return
+        number_line = self.binary_id_search(text_id)
+        self.read_file_line(number_line)
+        return self.line_format()
     
     def add_text_author_comment():
         return
@@ -188,9 +220,42 @@ class text_file(log_text_line):
     def read_text_author_comment():
         return
 
-class review_file(log_review_line):
-
-    def add_review():
+class review_file(log_review_line,use_file):
+    
+    # дуже схоже на функцію add для text
+    def add_review(self,reviewed_id,users_tg_id,text):
+        # create review_id to rewiev
+        review_id = self.create_id()
+        # make folder with name_id
+        self.create_directory(review_id)
+        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(review_id)
+        # add line to log
+        user = log_users('bio',users_tg_id)
+        user_id = user.read_file_line_value('id',0)
+        #?
+        del user
+        #?
+        line = pd.DataFrame(np.array([0,reviewed_id,review_id,user_id,len(text),00000,000,0,0]), columns=self.column_index.columns)
+        self.write_line('all',line)
+        self.write_file_line()
+        # create data_file and fill by text
+        f = open(f'{path_data}/{text_data}','w')
+        f.write('some user opinion shit',text)
+        f.close()
+        # add review_id to user_log
+        user = log_users('review_id',users_tg_id)
+        user.write_line('id',review_id)
+        user.write_file_line()
+        #?
+        del user
+        #?
+        # change count in path_user_log
+        user = log_user_line()
+        number_line = user.binary_id_search(user_id)
+        count_review = user.read_file_line_value('çount_r',number_line)
+        user.rewrite_file_line_value('çount_r',number_line,count_review + 1)        
+        # change count in global statistic
+        self.stat_increment()
         return
     
     def del_review():
@@ -216,25 +281,27 @@ class rate_file(log_rate_line):
     def read_rate():
         return
     
-    # need to debug
+    # need to debug but theoretical complite
     def count_rate_average(id):
-        
+        # calculate changes from database
+
         # calculate average value for define user_class and return mass
         # path_rate/{id}/rates_{user_class}
         def culc(id,user_class):
-            f = open(f'path_rate/{id}/rates_{user_class}','r')
+            filename = globals()[f'rates_{user_class}']
+            f = open(f'{path_rate_data}/{id}/{filename}','r')
             rate_line_obj = log_rate_line(user_class) 
             
             count = (f.seek(-1,2) + 1) // rate_line_obj.length #?
             
             column_count = rate_line_obj.column_index['rate'].iloc[0]
-            sum = [0]*(column_count)
+            sum = [0]*column_count
             #
             #mass = [[0]*(rate_line_obj.length-10) for i in range(count)]
             for i in range(count):
                 f.seek(i*rate_line_obj.length,0)
                 rate_line_obj.line = f.read(rate_line_obj.length)
-                rate_value = rate_line_obj.read('rate')
+                rate_value = rate_line_obj.read_line('rate')
                 for j in range(column_count):
                     sum[j] += int(rate_value[j])
                 #
@@ -249,11 +316,11 @@ class rate_file(log_rate_line):
         
         # check id class
         object_id = get_object_id(id)
-        filename = globals()[f'path_{check_class_id(id)}_log']
+        #filename = globals()[f'path_{check_class_id(id)}_log']
         # find line in path_{class}_log by binary_id_search
-        number = binary_id_search(object_id,filename,id)
+        number_line = object_id.binary_id_search(id) #binary_id_search(object_id,filename,id)
         
-        object_id.line = read_file_line(filename,object_id.length,number)
+        object_id.read_file_line(number_line)
         
         # write calculated average value for 'review_r', 'review_a', 'review_v'
         for class_name,class_name_short in user_class_value,user_class_value_short:
@@ -261,9 +328,10 @@ class rate_file(log_rate_line):
             rate_text = ''
             for i in range(len(mass_rate)):
                 rate_text += str(mass_rate[i])
-            object_id.write(f'rates_{class_name_short}',rate_text)
-         
-        rewrite_file_line(filename,object_id.length,number,object_id.line)
+            object_id.write_line(f'rates_{class_name_short}',rate_text)
+
+        # push changes to database
+        object_id.rewrite_file_line(number_line)
         
         # count average for each class
         rate_dict = {
@@ -271,8 +339,9 @@ class rate_file(log_rate_line):
             'author': '',
             'viewer': '',
         }
+
         for class_name,class_name_short in user_class_value,user_class_value_short:
-            rate_text = object_id.read(f'rates_{class_name_short}')
+            rate_text = object_id.read_line(f'rates_{class_name_short}')
             sum = 0
             for j in range(len(rate_text)):
                 sum += int(rate_text[j])

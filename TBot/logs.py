@@ -4,6 +4,64 @@ import numpy as np
 
 from file_path import path_review_log,path_statistic_log,path_text_log,path_user_log
 
+
+# виводить назву класу до якого належить це id
+# не узагальнена функція
+def check_class_id(id):
+    n = str(id)
+    match n[0]:
+        case '1':
+            return 'rate'
+        case '9':
+            return 'user'
+        case '8':
+            return 'review'
+        case '7':
+            return 'text'
+        case _:
+            Exception('unknown id number --> ', id)
+# виводить номер об'єкту класу виходячи зі значення id
+# не узагальнена функція
+def get_number_id(id):
+    match check_class_id(id):
+        case 'rate':
+            return id - 1e+10
+        case 'user':
+            return id - 9e+9
+        case 'review':
+            return id - 8e+9
+        case 'text':
+            return id - 7e+9
+
+def get_object_id(id,user_class='reviewer'): #?
+    match check_class_id(id):
+        case 'rate':
+            value = log_rate_line(user_class=user_class)
+            return value
+        case 'user':
+            value = log_user_line()
+            return value
+        case 'review':
+            value = log_review_line()
+            return value
+        case 'text':
+            value = log_text_line()
+            return value
+# виводить індекс класу, який використовується в id
+def get_class_index(name_class):
+    match name_class:
+        case 'rate':
+            return 10
+        case 'user':
+            return 9
+        case 'review':
+            return 8
+        case 'text':
+            return 7
+        case _:
+            raise Exception('unknown class name --> ', name_class)
+
+
 # Convert chat to int
 def char_to_int(text):
     text = str(text)
@@ -87,7 +145,8 @@ class log_file:
         if(name in self.bin_value_name_mass):
             text = char_to_int(text)
         return text
-    
+    # додати конвертер значень, бо воно просто видає у бінарному вигляді і нормально не інтерпретується
+    # він до цього вже був, я ж не настільки далекий від реальності
     def rewrite_file_line_value(self,name,number_line,text):
         f = open(self.filename,'r+')
         f.seek(self.length*number_line,0)
@@ -100,12 +159,36 @@ class log_file:
         f.write(text)
         f.close()
 
+    def binary_id_search(self,desired_id):
+        name = 'id'
+
+        #write func to check object,filevalue and id class compatibility
+        # напиши функцію перевірки сумісності вхідних даних
+
+        # a = a_index, -//-, n = id
+        # a_value = a_id, -//-
+        def bin(a,b,n):
+            a_value = self.read_file_line_value(name, a) #read_bin_value(name,filename,object,a)
+            b_value = self.read_file_line_value(name, b) #read_bin_value(name,filename,object,b)
+            c = (a+b)//2
+            c_value = self.read_file_line_value(name, c)
+            if(a_value < n and c_value >= n):
+                return bin(a,c,n)
+            elif(c_value < n and b_value > n):
+                return bin(c,b,n)
+            elif(n == a_value or n == b_value):
+                if(n == a_value):
+                    return a
+                if(n == b_value):
+                    return b
+
+        return bin(0,get_number_id(desired_id),desired_id)
 
 class log_line:
     def set_line(self,line):
         self.line = line
 
-    def read(self,name):
+    def read_line(self,name):
         if(len(self.line) == self.length):
             if(name in self.bin_value_name_mass):
                     return char_to_int(read_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2]))
@@ -130,7 +213,7 @@ class log_line:
             print(f"{name} have value out of limit")
         return write_value(self.line,self.column_index[name].iloc[1],self.column_index[name].iloc[2],text)
     
-    def write(self, name, text):
+    def write_line(self, name, text):
         if(name in self.bin_value_name_mass):
             if(not type(text) is int):
                 text = int(text)
@@ -149,10 +232,11 @@ class log_line:
     def line_format(self):
         output_line = 'column\tsize\tplace\n'
         for column in self.column_index.columns:
-            output_line += f'{column}\t{self.column_index[column].iloc[0]}\t{self.column_index[column].iloc[1]}-{self.column_index[column].iloc[2]}'
+            output_line += f'{column}\t{self.column_index[column].iloc[0]}\t{self.column_index[column].iloc[1]}{self.column_index[column].iloc[2]}\t'
+            output_line += self.read_line(column)
             output_line += '\n'
-        print(output_line)
-        #return output_line
+        #print(output_line)
+        return output_line
 
     def show(self):
         print(self.line)
@@ -278,8 +362,8 @@ class log_users(log_line,log_file):
                                                             [0],
                                                             [4]]), 
                                                             columns=['id'])
-                name = globals()[f'users_log_{name}']
-                self.filename = f'{path_user_data}/{tg_id}/{name}'
+                name_log = globals()[f'users_log_{name}']
+                self.filename = f'{path_user_data}/{tg_id}/{name_log}'
                 self.bin_value_name_mass = ['id']
                 self.str_value_name_mass = []
 
@@ -287,8 +371,6 @@ class log_users(log_line,log_file):
         self.length = self.column_index[self.column_index.columns[len(self.column_index.columns)-1]].iloc[2] + 1
         self.line = [chr(0) for i in range(self.length)]
 
-    def __init__(self):
-        pass
 
 class log_statistic(log_line,log_file):
     filename = path_statistic_log
@@ -301,7 +383,9 @@ class log_statistic(log_line,log_file):
     str_value_name_mass = []
     length = 40
     line = [chr(0) for i in range(length)]
-      
+    
+    def __init__(self):
+        pass
 
 def index_column(mass):
     #mass = [3,5,2,5,3,1,1]
@@ -342,7 +426,7 @@ print(h.get('data'))
 print(h.read('text_id'))
 '''
 #print(f.read('text_i'))
-
+'''
 #print(len(int_to_char(0)))
 f = log_text_line()
 data = pd.DataFrame(np.array([[0,7000000045,9000000001,90000,'R',20000,12345,123,1,20000]]), columns=['delete_flag','id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
@@ -352,7 +436,7 @@ f.write('size','90')
 print(f.read('all'))
 print(f.read('id'))
 #f.show()
-'''
+
 g = log_review_line()
 data = pd.DataFrame(np.array([[1111,1145,800000000,7000,12040,123,1,20]]), columns=['text_id','review_id','author_id','size','rates_r','rates_a','rates_v','deep'])
 g.write('all',data)
