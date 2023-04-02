@@ -120,6 +120,43 @@ class use_file:
     def read_file():
         return
 
+class user_file(log_user_line,use_file):
+    
+    def __init__(self):
+        pass
+
+    def __init__(self,tg_id):
+        self._users_bio = log_users('bio',tg_id)
+        self._users_text_id = log_users('text_id',tg_id)
+        self._users_review_id = log_users('review_id',tg_id)
+        self._users_rate_id = log_users('rate_id',tg_id)
+    
+    def add_user():
+        #create id
+        #make folder
+        #add line to path_user_log
+        #create users_log_files
+        #change global statistic
+        return
+    
+    def del_user():
+        #change in file path_user_log value in 'delete_flag' column, from 0 to 1
+        #add to delete list
+        #delete folder recursively
+        return
+    
+    def restore():
+        #change in file path_user_log value in 'delete_flag' column, from 1 to 0
+        return
+
+    def edit_user():
+        #edit users files
+        return
+    
+    def info():
+        #write 'bio', and log
+        return
+    
 class text_file(log_text_line,use_file):
     d = ''    
     def add_text(self,users_tg_id,text):
@@ -209,15 +246,20 @@ class text_file(log_text_line,use_file):
         return self.line_format()
     
     def add_text_author_comment():
+        #create file
+        #add text
         return
     
     def del_text_author_comment():
+        #delete text file
         return
     
     def edit_text_author_comment():
+        #edit text file
         return
     
     def read_text_author_comment():
+        #read text file 
         return
 
 class review_file(log_review_line,use_file):
@@ -259,26 +301,40 @@ class review_file(log_review_line,use_file):
         return
     
     def del_review():
+        #change in file path_review_log value in 'delete_flag' column, from 0 to 1
+        #add line to path_review_del_list
+        #
         return
     
     def edit_review():
+        #change text in path_review_data/{review_id}/review_data
+        #change in file path_text_log value in 'size' colum
         return
     
     def read_review():
+        #read text in path_text_data/{review_id}/review_data
         return
 
 class rate_file(log_rate_line):
 
     def add_rate():
+        #create path_rate_data/{class_id}/{user_class_file}
+        #create rate_id
+        #add line to path_rate_data/{class_id}/{user_class_file}
+        #change global statistic
+        #add rate_id to users
         return
     
     def del_rate():
+
         return
     
     def edit_rate():
+        #chage 'rate' in path_rate_data/{class_id}/{user_class_file}
         return
     
     def read_rate():
+        #read 'rate' in path_rate_data/{class_id}/{user_class_file}
         return
     
     # need to debug but theoretical complite
