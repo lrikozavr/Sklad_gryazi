@@ -327,8 +327,8 @@ class log_user_line(log_line,log_file):
     column_index = pd.DataFrame(np.array([[1,5,5,1,2,2,2,3,5,3,1,2],
                                           [0, 1, 6, 11, 12, 14, 16, 18, 21, 26, 29, 30],
                                           [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29, 31]]), 
-                                            columns=['delete_flag','id','tg_id','class','age','count_t','count_r','count_rate','rates_r','rates_a','rates_v','rep'])
-    bin_value_name_mass = ['id','tg_id','age','count_t','count_r','count_rate','rep']
+                                            columns=['delete_flag','id','tg_id','class','age','count_t','count_re','count_ra','rates_r','rates_a','rates_v','rep'])
+    bin_value_name_mass = ['id','tg_id','age','count_t','count_re','count_ra','rep']
     str_value_name_mass = ['delete_flag','class','rates_r','rates_a','rates_v']
     
     length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1

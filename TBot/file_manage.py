@@ -5,12 +5,20 @@ import numpy as np
 
 from logs import log_review_line,log_text_line,log_user_line,log_rate_line,log_users,log_statistic
 from logs import get_object_id,get_number_id,check_class_id,get_class_index
-
-global_class_value = ['text','review','rate','user']
-global_class_value_short = ['t','re','ra','u'] # maybe unnecessary
+#class
+global_class_value_short = {
+    'text': 't',
+    'review': 're',
+    'rate': 'ra',
+    'user': 'u'
+}
 #user class
-user_class_value = ['reviewer','author','viewer']
-user_class_value_short = ['r','a','v']
+global_user_class_value_short = {
+    'reviewer': 'r',
+    'author': 'a',
+    'viewer': 'v'
+}
+
 
 #whole file log
 def read_file_log(filename):
@@ -108,7 +116,30 @@ class use_file:
         stat.rewrite_file_line_value(f'all_count_{self.class_name}',0,int(all_count_class_name)+1)
         stat.rewrite_file_line_value(f'now_count_{self.class_name}',0,int(now_count_class_name)+1)
 
-    def add_file():
+    def add_file(self,users_tg_id):
+        # text,review,rate
+        # create text_id to text
+        id = self.create_id()
+        # make folder (check if folder already exist) path_{class_names}_data/{text_id}
+        self.create_directory(id)
+        # path
+        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(id)
+        # add line to path_text_log
+        user = log_users('bio',users_tg_id)
+        user_id = user.read_file_line_value('id',0)
+        del user
+        #
+        user = log_users(f'{self.class_name}_id',users_tg_id)
+        user.write_line('id',id)
+        user.write_file_line()
+        # change count in path_user_log
+        user = log_user_line()
+        number_line = user.binary_id_search(user_id)
+        count_text = user.read_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line)
+        user.rewrite_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line,int(count_text) + 1)
+        
+        # change count in global_statistic
+        self.stat_increment()
         return
     
     def del_file():
@@ -281,7 +312,7 @@ class review_file(log_review_line,use_file):
         self.write_line('all',line)
         self.write_file_line()
         # create data_file and fill by text
-        f = open(f'{path_data}/{text_data}','w')
+        f = open(f'{path_data}/{review_data}','w')
         f.write('some user opinion shit',text)
         f.close()
         # add review_id to user_log
@@ -379,7 +410,7 @@ class rate_file(log_rate_line):
         object_id.read_file_line(number_line)
         
         # write calculated average value for 'review_r', 'review_a', 'review_v'
-        for class_name,class_name_short in user_class_value,user_class_value_short:
+        for class_name,class_name_short in global_user_class_value_short.keys(),global_user_class_value_short.values():
             mass_rate = culc(id,class_name)
             rate_text = ''
             for i in range(len(mass_rate)):
@@ -396,7 +427,7 @@ class rate_file(log_rate_line):
             'viewer': '',
         }
 
-        for class_name,class_name_short in user_class_value,user_class_value_short:
+        for class_name,class_name_short in global_user_class_value_short.keys(),global_user_class_value_short.values():
             rate_text = object_id.read_line(f'rates_{class_name_short}')
             sum = 0
             for j in range(len(rate_text)):
