@@ -3,7 +3,7 @@ from file_path import *
 import pandas as pd
 import numpy as np
 
-from logs import log_review_line,log_text_line,log_user_line,log_rate_line,log_users,log_statistic
+from logs import log_review_line,log_text_line,log_user_line,log_user_file,log_rate_line,log_rate_file,log_statistic
 from logs import get_object_id,get_number_id,check_class_id,get_class_index
 #class
 global_class_value_short = {
@@ -93,7 +93,7 @@ def binary_id_search(object,filename,desired_id):
 ################################################################
 
 import os
-
+from file_path import user_log_bio,user_log_rate_id,user_log_review_id,user_log_text_id
 class use_file:
     def create_id(self):
         stat = log_statistic()
@@ -115,32 +115,91 @@ class use_file:
         now_count_class_name = stat.read_file_line_value(f'now_count_{self.class_name}',0)
         stat.rewrite_file_line_value(f'all_count_{self.class_name}',0,int(all_count_class_name)+1)
         stat.rewrite_file_line_value(f'now_count_{self.class_name}',0,int(now_count_class_name)+1)
-
-    def add_file(self,users_tg_id):
-        # text,review,rate
-        # create text_id to text
+    
+    def add_file(self,users_tg_id,text,reviewed_id=10000000001,user_class='viewer'):
+        #create id
         id = self.create_id()
-        # make folder (check if folder already exist) path_{class_names}_data/{text_id}
-        self.create_directory(id)
-        # path
-        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(id)
-        # add line to path_text_log
-        user = log_users('bio',users_tg_id)
-        user_id = user.read_file_line_value('id',0)
-        del user
-        #
-        user = log_users(f'{self.class_name}_id',users_tg_id)
-        user.write_line('id',id)
-        user.write_file_line()
-        # change count in path_user_log
-        user = log_user_line()
-        number_line = user.binary_id_search(user_id)
-        count_text = user.read_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line)
-        user.rewrite_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line,int(count_text) + 1)
-        
         # change count in global_statistic
         self.stat_increment()
-        return
+        match self.class_name:
+            case 'user':
+                # path
+                path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(users_tg_id)
+                #
+                self.create_directory(users_tg_id)
+                #open(f'{path_data}/{user_log_bio}','w').close()
+                open(f'{path_data}/{user_log_text_id}','w').close()
+                open(f'{path_data}/{user_log_review_id}','w').close()
+                open(f'{path_data}/{user_log_rate_id}','w').close()
+                #
+                line = pd.DataFrame(np.array([0,id,users_tg_id,global_user_class_value_short[user_class],0,0,0,0,00000,000,0,0]), columns=self.column_index.columns)
+                self.write_line('all',line)
+                self.write_file_line()                
+                del line
+                #
+                user_file = log_user_file('bio',users_tg_id)
+                user_file.write_line('all',text)
+                user_file.write_file_line()
+                del user_file
+            case 'text' | 'review' | 'rate':
+                # get user_id
+                user = log_user_file('bio',users_tg_id)
+                user_id = user.read_file_line_value('id',0)
+                del user
+                # make folder (check if folder already exist) path_{class_names}_data/{id}/{class_names}_data
+                match self.class_name:
+                    case 'text' | 'rate':
+                        # path
+                        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(id)
+                        #
+                        self.create_directory(id)
+                        # create data_file and fill by text
+                        filename_data = globals()[f'{self.class_name}_data']
+                        f = open(f'{path_data}/{filename_data}','w')
+                        f.write(text)
+                        f.close()
+                    case 'rate':
+                        self.create_directory(reviewed_id)
+                #additional file
+                match self.class_name:
+                    case 'text':
+                        line = pd.DataFrame(np.array([0,id,user_id,len(text),'W',0,00000,000,0,0]), columns=self.column_index.columns)
+                        self.write_line('all',line)
+                        self.write_file_line()
+                        # create 'reviews_list_code' file
+                        open(f'{path_data}/{text_reviews_code}','w').close()
+                        # create 'author_comment' file
+                        open(f'{path_data}/{text_author_comment}','w').close()
+                        del line
+                    case 'review':
+                        line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,len(text),00000,000,0,0]), columns=self.column_index.columns)
+                        self.write_line('all',line)
+                        self.write_file_line()
+                        del line
+                    case 'rate':
+                        line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,user_class]), columns=self.column_index.columns)
+                        self.write_line('all',line)
+                        self.write_file_line()
+                        del line
+                        #
+                        rate_file = log_rate_file(user_class,reviewed_id)
+                        line = pd.DataFrame(np.array([text,id,user_id]), columns=rate_file.column_index.columns)
+                        rate_file.write_line('all',line)
+                        rate_file.write_file_line()                                                
+                        del rate_file
+
+                # add line to users class_name_id
+                user = log_user_file(f'{self.class_name}_id',users_tg_id)
+                user.write_line('id',id)
+                user.write_file_line()
+                del user
+                # change count in path_user_log
+                user = log_user_line()
+                number_line = user.binary_id_search(user_id)
+                count_text = user.read_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line)
+                user.rewrite_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line,int(count_text) + 1)
+                del user
+        #return  'ok'
     
     def del_file():
         return
@@ -157,10 +216,10 @@ class user_file(log_user_line,use_file):
         pass
 
     def __init__(self,tg_id):
-        self._users_bio = log_users('bio',tg_id)
-        self._users_text_id = log_users('text_id',tg_id)
-        self._users_review_id = log_users('review_id',tg_id)
-        self._users_rate_id = log_users('rate_id',tg_id)
+        self._users_bio = log_user_file('bio',tg_id)
+        self._users_text_id = log_user_file('text_id',tg_id)
+        self._users_review_id = log_user_file('review_id',tg_id)
+        self._users_rate_id = log_user_file('rate_id',tg_id)
     
     def add_user():
         #create id
@@ -197,7 +256,7 @@ class text_file(log_text_line,use_file):
         self.create_directory(text_id)
         path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(text_id)
         # add line to path_text_log
-        user = log_users('bio',users_tg_id)
+        user = log_user_file('bio',users_tg_id)
         user_id = user.read_file_line_value('id',0)
         #?
         del user
@@ -215,7 +274,7 @@ class text_file(log_text_line,use_file):
         f.write('some telegraph shit',text)
         f.close()
         # add text_id to user_log_text_id by path_user_data/{author_id}
-        user = log_users('text_id',users_tg_id)
+        user = log_user_file('text_id',users_tg_id)
         user.write_line('id',text_id)
         user.write_file_line()
         #?
@@ -303,7 +362,7 @@ class review_file(log_review_line,use_file):
         self.create_directory(review_id)
         path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(review_id)
         # add line to log
-        user = log_users('bio',users_tg_id)
+        user = log_user_file('bio',users_tg_id)
         user_id = user.read_file_line_value('id',0)
         #?
         del user
@@ -316,7 +375,7 @@ class review_file(log_review_line,use_file):
         f.write('some user opinion shit',text)
         f.close()
         # add review_id to user_log
-        user = log_users('review_id',users_tg_id)
+        user = log_user_file('review_id',users_tg_id)
         user.write_line('id',review_id)
         user.write_file_line()
         #?
@@ -346,7 +405,7 @@ class review_file(log_review_line,use_file):
         #read text in path_text_data/{review_id}/review_data
         return
 
-class rate_file(log_rate_line):
+class rate_file(log_rate_line,use_file):
 
     def add_rate():
         #create path_rate_data/{class_id}/{user_class_file}
@@ -377,18 +436,18 @@ class rate_file(log_rate_line):
         def culc(id,user_class):
             filename = globals()[f'rates_{user_class}']
             f = open(f'{path_rate_data}/{id}/{filename}','r')
-            rate_line_obj = log_rate_line(user_class) 
+            rate_file_obj = log_rate_file(user_class,id) 
             
-            count = (f.seek(-1,2) + 1) // rate_line_obj.length #?
+            count = (f.seek(-1,2) + 1) // rate_file_obj.length #?
             
-            column_count = rate_line_obj.column_index['rate'].iloc[0]
+            column_count = rate_file_obj.column_index['rate'].iloc[0]
             sum = [0]*column_count
             #
             #mass = [[0]*(rate_line_obj.length-10) for i in range(count)]
             for i in range(count):
-                f.seek(i*rate_line_obj.length,0)
-                rate_line_obj.line = f.read(rate_line_obj.length)
-                rate_value = rate_line_obj.read_line('rate')
+                f.seek(i*rate_file_obj.length,0)
+                rate_file_obj.line = f.read(rate_file_obj.length)
+                rate_value = rate_file_obj.read_line('rate')
                 for j in range(column_count):
                     sum[j] += int(rate_value[j])
                 #

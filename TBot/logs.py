@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 
-from file_path import path_review_log,path_statistic_log,path_text_log,path_user_log
+from file_path import path_review_log,path_statistic_log,path_text_log,path_user_log,path_rate_log
 
 
 # виводить назву класу до якого належить це id
@@ -127,7 +127,7 @@ class log_file:
             f.seek(self.length*number,0)
             f.write(self.line)
         else:
-            Exception(f'length of line not compare with text, actual length ---> {len(self.line)}, length required ---> {length_line}')
+            Exception(f'length of line not compare with text, actual length ---> {len(self.line)}, length required ---> {self.length}')
         f.close()
     #rewrite_file_line('1.txt',5,4,'00000')
 
@@ -242,7 +242,7 @@ class log_line:
         print(self.line)
 
 class log_text_line(log_line,log_file):
-    #7000000000
+    # 7000000000
     index_value = 7e+9
     filename = path_text_log
     class_name = 'text'
@@ -262,7 +262,7 @@ class log_text_line(log_line,log_file):
 
 
 class log_review_line(log_line,log_file):
-    #8000000000
+    # 8000000000
     index_value = 8e+9
     filename = path_review_log
     class_name = 'review'
@@ -279,39 +279,51 @@ class log_review_line(log_line,log_file):
     
     def __init__(self):
         pass
-    
 
-from file_path import rates_author,rates_reviewer,rates_viewer,path_rate_data
 class log_rate_line(log_line,log_file):
-    #10000000000
+    # 10000000000
     index_value = 1e+10
-    #filename = ''
+    filename = path_rate_log
     class_name = 'rate'
     # line struct
-    bin_value_name_mass = ['id','author_id']
-    str_value_name_mass = ['rate']
-    #column_index = ''
-    #length = 15
-    def __init__(self,user_class,id):
+    column_index = pd.DataFrame(np.array([[1,5,5,5,1],
+                                          [0, 1, 6, 11, 16],
+                                          [0, 5, 10, 15, 16]]), 
+                                            columns=['delete_flag','text_id','id','author_id','user_class'])
+    bin_value_name_mass = ['text_id','id','author_id']
+    str_value_name_mass = ['delete_flag','user_class']
+
+    length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
+    line = [chr(0) for i in range(length)]
+
+    def __init__(self):
+        pass
+
+from file_path import rates_author,rates_reviewer,rates_viewer,path_rate_data
+class log_rate_file(log_line,log_file):
+
+    def __init__(self,user_class,reted_id):
+        self.bin_value_name_mass = ['id','author_id']
+        self.str_value_name_mass = ['rate']
         match user_class:
             case 'reviewer':
                 self.column_index = pd.DataFrame(np.array([[5,5,5],
                                           [0, 5, 10],
                                           [4, 9, 14]]), 
                                             columns=['rate','id','author_id'])
-                self.filename = f'{path_rate_data}/{id}/{rates_reviewer}'
+                self.filename = f'{path_rate_data}/{reted_id}/{rates_reviewer}'
             case 'author':
                 self.column_index = pd.DataFrame(np.array([[3,5,5],
                                           [0, 3, 8],
                                           [2, 7, 12]]), 
                                             columns=['rate','id','author_id'])
-                self.filename = f'{path_rate_data}/{id}/{rates_author}'
+                self.filename = f'{path_rate_data}/{reted_id}/{rates_author}'
             case 'viewer':
                 self.column_index = pd.DataFrame(np.array([[1,5,5],
                                           [0, 1, 6],
                                           [0, 5, 10]]), 
                                             columns=['rate','id','author_id'])
-                self.filename = f'{path_rate_data}/{id}/{rates_viewer}'
+                self.filename = f'{path_rate_data}/{reted_id}/{rates_viewer}'
             case _:
                 Exception('go fuck yourself')
         self.length = self.column_index[self.column_index.columns[len(self.column_index.columns)-1]].iloc[2] + 1
@@ -319,7 +331,7 @@ class log_rate_line(log_line,log_file):
 
 
 class log_user_line(log_line,log_file):
-    #9000000000
+    # 9000000000
     index_value = 9e+9
     filename = path_user_log
     class_name = 'user'
@@ -340,11 +352,8 @@ class log_user_line(log_line,log_file):
 
 import json
 from file_path import path_user_data,users_log_bio,users_log_rate_id,users_log_review_id,users_log_text_id
-class log_users(log_line,log_file):
-    #можна додати бінарний пошук по номеру
-
-    bin_value_name_mass = []
-    str_value_name_mass = []
+class log_user_file(log_line,log_file):
+    
     def __init__(self, name, tg_id):
         match name:
             case 'bio':    
@@ -367,7 +376,6 @@ class log_users(log_line,log_file):
                 self.bin_value_name_mass = ['id']
                 self.str_value_name_mass = []
 
-
         self.length = self.column_index[self.column_index.columns[len(self.column_index.columns)-1]].iloc[2] + 1
         self.line = [chr(0) for i in range(self.length)]
 
@@ -381,7 +389,7 @@ class log_statistic(log_line,log_file):
                                             columns=['now_count_text','now_count_review','now_count_rate','now_count_user','all_count_text','all_count_review','all_count_rate','all_count_user'])
     bin_value_name_mass = ['now_count_text','now_count_review','now_count_rate','now_count_user','all_count_text','all_count_review','all_count_rate','all_count_user']
     str_value_name_mass = []
-    length = 40
+    length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
     line = [chr(0) for i in range(length)]
     
     def __init__(self):
@@ -407,7 +415,7 @@ def index_column(mass):
     #return index_m
     '''
 
-#index_column([128,5,5,128,128,1024])
+index_column([1,5,5,5,1])
 #index_column([5,5,5])
 #index_column([3,5,5])
 #index_column([1,5,5])

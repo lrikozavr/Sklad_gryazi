@@ -8,11 +8,13 @@ path_user = 'Users'
 path_text_log = f'{path_text}/logs.bin'
 path_review_log = f'{path_review}/logs.bin'
 path_user_log = f'{path_user}/logs.bin'
+path_rate_log = f'{path_rate}/logs.bin'
 path_statistic_log = f'statistic.bin'
 #delete list
 path_text_del_list = f'{path_text}/del.txt'
 path_review_del_list = f'{path_review}/del.txt'
 path_user_del_list = f'{path_user}/del.txt'
+path_rate_del_list = f'{path_rate}/del.txt'
 #data
 path_text_data = f'{path_text}/data'
 path_review_data = f'{path_review}/data'
@@ -29,7 +31,7 @@ rates_reviewer = 'rates_reviewer' #path_rate_data/{code_withoutrate}/rates_revie
 rates_author = 'rates_author'
 rates_viewer = 'rates_viewer'
 #user spec
-users_log_bio = 'bio.txt' #path_user_data/{code}/bio.txt
-users_log_text_id = 'text_id.bin' #path_user_data/{code}/text_id.bin
-users_log_review_id = 'review_id.bin' #path_user_data/{code}/review_id.bin
-users_log_rate_id = 'rate_id.bin' #path_user_data/{code}/rate_id.bin
+user_log_bio = 'bio.txt' #path_user_data/{code}/bio.txt
+user_log_text_id = 'text_id.bin' #path_user_data/{code}/text_id.bin
+user_log_review_id = 'review_id.bin' #path_user_data/{code}/review_id.bin
+user_log_rate_id = 'rate_id.bin' #path_user_data/{code}/rate_id.bin
