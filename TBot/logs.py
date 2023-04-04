@@ -33,10 +33,10 @@ def get_number_id(id):
         case 'text':
             return id - 7e+9
 
-def get_object_id(id,user_class='reviewer'): #?
+def get_object_id(id): #?
     match check_class_id(id):
         case 'rate':
-            value = log_rate_line(user_class=user_class)
+            value = log_rate_line()
             return value
         case 'user':
             value = log_user_line()
@@ -159,12 +159,35 @@ class log_file:
         f.write(text)
         f.close()
 
+    def write_file_line_value(self,filename,name,text):
+        f = open(filename,'a')
+        if(name in self.bin_value_name_mass):
+            if(not type(text) is int):
+                text = int(text)
+            text = int_to_char(text)
+        elif(name in self.str_value_name_mass):
+            if(not type(text) is str):
+                text = str(text)
+        if(len(text) < self.column_index[name].iloc[0]):
+            for iii in range(len(text), self.column_index[name].iloc[0] + 1,1):
+                text += chr(0)
+        elif(len(text) > self.column_index[name].iloc[0]):
+            print(f"{name} have value out of limit")
+        f.write(text)
+        f.close()
+
     def binary_id_search(self,desired_id):
         name = 'id'
 
         #write func to check object,filevalue and id class compatibility
         # напиши функцію перевірки сумісності вхідних даних
-
+        # не дає вийти значенню номеру за межі файлу
+        f = open(self.filename,'r')
+        f.seek(-0,2) #f.seek(-self.length,2)
+        border = f.tell() // self.length
+        if(get_number_id(desired_id) < border):
+            border = get_number_id(desired_id)
+        f.close()
         # a = a_index, -//-, n = id
         # a_value = a_id, -//-
         def bin(a,b,n):
@@ -182,7 +205,7 @@ class log_file:
                 if(n == b_value):
                     return b
 
-        return bin(0,get_number_id(desired_id),desired_id)
+        return bin(0,border,desired_id)
 
 class log_line:
     def set_line(self,line):
@@ -197,7 +220,7 @@ class log_line:
             elif(name == 'all'):
                 mass = pd.DataFrame([np.zeros(len(self.column_index.columns))],columns=self.column_index.columns)
                 for column in self.column_index.columns:
-                    mass[column].iloc[0] = self.read(column)
+                    mass[column].iloc[0] = self.read_line(column)
                 return mass
             else:
                 raise Exception('I don`t know this column name --> ', name)
@@ -225,7 +248,7 @@ class log_line:
             self.line = self.write_sup_func(name,text)
         elif(name == 'all'):
             for column in self.column_index.columns:
-                self.write(column,text[column].iloc[0])
+                self.write_line(column,text[column].iloc[0])
         else:
             raise Exception('I don`t know this column name --> ', name)
 
@@ -247,11 +270,11 @@ class log_text_line(log_line,log_file):
     filename = path_text_log
     class_name = 'text'
     # line struct
-    column_index = pd.DataFrame(np.array([[1,5,5,3,1,2,5,3,1,2],
-                                            [0, 1, 6, 11, 14, 15, 17, 22, 25, 26],
-                                            [0, 5, 10, 13, 14, 16, 21, 24, 25, 27]]), 
-                                            columns=['delete_flag','id','author_id','size','review_m','review','rates_r','rates_a','rates_v','debates'])
-    bin_value_name_mass = ['id','author_id','size','review','debates']
+    column_index = pd.DataFrame(np.array([[1,5,5,3,1,2,5,3,1,2,2,2,2],
+                                            [0, 1, 6, 11, 14, 15, 17, 22, 25, 26, 28, 30, 32],
+                                            [0, 5, 10, 13, 14, 16, 21, 24, 25, 27, 29, 31, 33]]), 
+                                            columns=['delete_flag','id','author_id','size','review_m','review_count','rates_r','rates_a','rates_v','rates_r_count','rates_a_count','rates_v_count','debates'])
+    bin_value_name_mass = ['id','author_id','size','review','debates','rates_r_count','rates_a_count','rates_v_count']
     str_value_name_mass = ['delete_flag','review_m','rates_r','rates_a','rates_v']
     
     length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
@@ -267,11 +290,11 @@ class log_review_line(log_line,log_file):
     filename = path_review_log
     class_name = 'review'
     # line struct
-    column_index = pd.DataFrame(np.array([[1,5,5,5,2,5,3,1,1],
-                                            [0, 1, 6, 11, 16, 18, 23, 26, 27],
-                                            [0, 5, 10, 15, 17, 22, 25, 26, 27]]), 
-                                            columns=['delete_flag','text_id','id','author_id','size','rates_r','rates_a','rates_v','deep'])
-    bin_value_name_mass = ['text_id','id','author_id','size','deep']
+    column_index = pd.DataFrame(np.array([[1,5,5,5,2,5,3,1,2,2,2,1],
+                                            [0, 1, 6, 11, 16, 18, 23, 26, 27, 29, 31, 33],
+                                            [0, 5, 10, 15, 17, 22, 25, 26, 28, 30, 32, 33]]), 
+                                            columns=['delete_flag','text_id','id','author_id','size','rates_r','rates_a','rates_v','rates_r_count','rates_a_count','rates_v_count','deep'])
+    bin_value_name_mass = ['text_id','id','author_id','size','rates_r_count','rates_a_count','rates_v_count','deep']
     str_value_name_mass = ['delete_flag','rates_r','rates_a','rates_v']
     
     length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
@@ -304,25 +327,25 @@ class log_rate_file(log_line,log_file):
 
     def __init__(self,user_class,reted_id):
         self.bin_value_name_mass = ['id','author_id']
-        self.str_value_name_mass = ['rate']
+        self.str_value_name_mass = ['rate','delete_flag']
         match user_class:
             case 'reviewer':
-                self.column_index = pd.DataFrame(np.array([[5,5,5],
-                                          [0, 5, 10],
-                                          [4, 9, 14]]), 
-                                            columns=['rate','id','author_id'])
+                self.column_index = pd.DataFrame(np.array([[5,5,5,1],
+                                          [0, 5, 10, 15],
+                                          [4, 9, 14, 15]]), 
+                                            columns=['rate','id','author_id','delete_flag'])
                 self.filename = f'{path_rate_data}/{reted_id}/{rates_reviewer}'
             case 'author':
-                self.column_index = pd.DataFrame(np.array([[3,5,5],
-                                          [0, 3, 8],
-                                          [2, 7, 12]]), 
-                                            columns=['rate','id','author_id'])
+                self.column_index = pd.DataFrame(np.array([[3,5,5,1],
+                                          [0, 3, 8, 13],
+                                          [2, 7, 12, 13]]), 
+                                            columns=['rate','id','author_id','delete_flag'])
                 self.filename = f'{path_rate_data}/{reted_id}/{rates_author}'
             case 'viewer':
-                self.column_index = pd.DataFrame(np.array([[1,5,5],
-                                          [0, 1, 6],
-                                          [0, 5, 10]]), 
-                                            columns=['rate','id','author_id'])
+                self.column_index = pd.DataFrame(np.array([[1,5,5,1],
+                                          [0, 1, 6, 11],
+                                          [0, 5, 10, 11]]), 
+                                            columns=['rate','id','author_id','delete_flag'])
                 self.filename = f'{path_rate_data}/{reted_id}/{rates_viewer}'
             case _:
                 Exception('go fuck yourself')
@@ -336,11 +359,15 @@ class log_user_line(log_line,log_file):
     filename = path_user_log
     class_name = 'user'
     # line struct
-    column_index = pd.DataFrame(np.array([[1,5,5,1,2,2,2,3,5,3,1,2],
-                                          [0, 1, 6, 11, 12, 14, 16, 18, 21, 26, 29, 30],
-                                          [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29, 31]]), 
-                                            columns=['delete_flag','id','tg_id','class','age','count_t','count_re','count_ra','rates_r','rates_a','rates_v','rep'])
-    bin_value_name_mass = ['id','tg_id','age','count_t','count_re','count_ra','rep']
+    column_index = pd.DataFrame(np.array([[1,5,5,1,2,2,2,3,5,3,1,2,2,2,2],
+                                          [0, 1, 6, 11, 12, 14, 16, 18, 21, 26, 29, 30, 32, 34, 36],
+                                          [0, 5, 10, 11, 13, 15, 17, 20, 25, 28, 29, 31, 33, 35, 37]]), 
+                                            columns=['delete_flag','id','tg_id','class','age',
+                                                     'count_t','count_re','count_ra',
+                                                     'rates_r','rates_a','rates_v',
+                                                     'rates_r_count','rates_a_count','rates_v_count',
+                                                     'rep'])
+    bin_value_name_mass = ['id','tg_id','age','count_t','count_re','count_ra','rates_r_count','rates_a_count','rates_v_count','rep']
     str_value_name_mass = ['delete_flag','class','rates_r','rates_a','rates_v']
     
     length = column_index[column_index.columns[len(column_index.columns)-1]].iloc[2] + 1
@@ -351,7 +378,7 @@ class log_user_line(log_line,log_file):
     
 
 import json
-from file_path import path_user_data,users_log_bio,users_log_rate_id,users_log_review_id,users_log_text_id
+from file_path import path_user_data,user_log_bio,user_log_rate_id,user_log_review_id,user_log_text_id
 class log_user_file(log_line,log_file):
     
     def __init__(self, name, tg_id):
@@ -361,7 +388,7 @@ class log_user_file(log_line,log_file):
                                                             [0, 128, 133, 138, 266, 394],
                                                             [127, 132, 137, 265, 393, 1417]]), 
                                                             columns=['name','id','tg_id','command','status','bio'])
-                self.filename = f'{path_user_data}/{tg_id}/{users_log_bio}'
+                self.filename = f'{path_user_data}/{tg_id}/{user_log_bio}'
                 self.bin_value_name_mass = ['id','tg_id']
                 self.str_value_name_mass = ['name','command','status','bio']
 
@@ -415,7 +442,7 @@ def index_column(mass):
     #return index_m
     '''
 
-index_column([1,5,5,5,1])
+index_column([1,5,5,1,2,2,2,3,5,3,1,2,2,2,2])
 #index_column([5,5,5])
 #index_column([3,5,5])
 #index_column([1,5,5])

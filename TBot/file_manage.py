@@ -94,6 +94,7 @@ def binary_id_search(object,filename,desired_id):
 
 import os
 from file_path import user_log_bio,user_log_rate_id,user_log_review_id,user_log_text_id
+from file_path import path_text_del_list,path_review_del_list,path_user_del_list,path_rate_del_list
 class use_file:
     def create_id(self):
         stat = log_statistic()
@@ -116,6 +117,34 @@ class use_file:
         stat.rewrite_file_line_value(f'all_count_{self.class_name}',0,int(all_count_class_name)+1)
         stat.rewrite_file_line_value(f'now_count_{self.class_name}',0,int(now_count_class_name)+1)
     
+    def add_delete(self,id):
+        path_delete = globals()[f'path_{self.class_name}_del_list']
+        filename = path_delete
+        self.write_file_line_value(filename,'id',id)
+    
+    def change_average_once(self,average,new_rate,n,flag):
+        def increment(average,new,n):
+            if(n > 0):
+                return average + (new - average)/(n+1)
+            else:
+                raise Exception('division by zero')
+        def decrement(average,old,n):
+            if(n > 1):
+                return average - (old - average)/(n-1)
+            else:
+                raise Exception('division by zero')
+        new_average = [0]*len(average)
+        if(flag):
+            for i in range(len(average)):
+                new_average[i] = increment(int(average[i]),int(new_rate[i]),n)
+        else:
+            for i in range(len(average)):
+                new_average[i] = decrement(int(average[i]),int(new_rate[i]),n)
+        new_str_average = ''
+        for i in range(len(average)):
+            new_str_average += new_average[i]
+        return new_str_average
+
     def add_file(self,users_tg_id,text,reviewed_id=10000000001,user_class='viewer'):
         #create id
         id = self.create_id()
@@ -176,14 +205,26 @@ class use_file:
                         self.write_line('all',line)
                         self.write_file_line()
                         del line
+                        # Додай збільшення count в логу тексту і може ще десь
                     case 'rate':
+                        # Додай зміну середнього значення
+                        reviewed_object = get_object_id(reviewed_id)
+                        number_line = reviewed_object.binary_id_search(reviewed_id)
+                        average_rate = reviewed_object.read_file_line_value(f'rates_{global_user_class_value_short[user_class]}',number_line)
+                        count_rate = reviewed_object.read_file_line_value(f'rates_{global_user_class_value_short[user_class]}_count',number_line)
+                        new_average_rate = self.change_average_once(average_rate,text,count_rate,1)
+                        reviewed_object.rewrite_file_line_value(f'rates_{global_user_class_value_short[user_class]}',number_line,new_average_rate)
+                        reviewed_object.rewrite_file_line_value(f'rates_{global_user_class_value_short[user_class]}_count',number_line,count_rate+1)
+                        del reviewed_object
+                        # Додав
+                        #Додай перевірку чи робив це юзер до цього
                         line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,user_class]), columns=self.column_index.columns)
                         self.write_line('all',line)
                         self.write_file_line()
                         del line
                         #
                         rate_file = log_rate_file(user_class,reviewed_id)
-                        line = pd.DataFrame(np.array([text,id,user_id]), columns=rate_file.column_index.columns)
+                        line = pd.DataFrame(np.array([text,id,user_id,0]), columns=rate_file.column_index.columns)
                         rate_file.write_line('all',line)
                         rate_file.write_file_line()                                                
                         del rate_file
@@ -201,10 +242,30 @@ class use_file:
                 del user
         #return  'ok'
     
-    def del_file():
-        return
+    def delete_file(self,id,user_class = 'viewer'):
+        number_line = self.binary_id_search(id)
+        self.rewrite_file_line_value('delete_flag',number_line,1)
+        self.add_delete(id)
+        if(self.class_name == 'rate'):
+            rated_id = self.read_file_line_value('text_id')
+            rate_data = log_rate_file(user_class,rated_id)
+            number_line = rate_data.binary_id_search(id)
+            rate_data.rewrite_file_line_value('delete_flag',number_line,1)
+            del rate_data
+        #return 'ok'
     
-    def edit_file():
+    def restore_file(self,id,user_class = 'viewer'):
+        number_line = self.binary_id_search(id)
+        self.rewrite_file_line_value('delete_flag',number_line,0)        
+        if(self.class_name == 'rate'):
+            rated_id = self.read_file_line_value('text_id')
+            rate_data = log_rate_file(user_class,rated_id)
+            number_line = rate_data.binary_id_search(id)
+            rate_data.rewrite_file_line_value('delete_flag',number_line,0)
+            del rate_data
+        #return 'ok'
+
+    def edit_file(self):
         return
     
     def read_file():
@@ -426,6 +487,8 @@ class rate_file(log_rate_line,use_file):
     def read_rate():
         #read 'rate' in path_rate_data/{class_id}/{user_class_file}
         return
+    
+
     
     # need to debug but theoretical complite
     def count_rate_average(id):
