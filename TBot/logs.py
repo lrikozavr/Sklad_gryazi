@@ -191,6 +191,8 @@ class log_file:
         # a = a_index, -//-, n = id
         # a_value = a_id, -//-
         def bin(a,b,n):
+            if(a == b):
+                return -1
             a_value = self.read_file_line_value(name, a) #read_bin_value(name,filename,object,a)
             b_value = self.read_file_line_value(name, b) #read_bin_value(name,filename,object,b)
             c = (a+b)//2

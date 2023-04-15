@@ -1,6 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 '''
+https://api.telegra.ph/createAccount?short_name=Sandbox&author_name=Anonymous
+{"ok":true,"result":{"short_name":"Sandbox","author_name":"Anonymous","author_url":"","access_token":"766c116300bc9a8d6456a4819c571b3e0264a88b41ac10c0c005975e06e6","auth_url":"https:\/\/edit.telegra.ph\/auth\/J2yCcsdGClxcinJv0JiCFFXxRko8juX0uuCHWQnw9U"}}
+https://telegra.ph/api
+
 # Replace this with the URL of the telegra.ph article you want to extract from
 url = "https://telegra.ph/Podruga-08-12"
 

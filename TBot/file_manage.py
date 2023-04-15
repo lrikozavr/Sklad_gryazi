@@ -64,10 +64,15 @@ def write_file_line(filename,text):
 # object by log_line_class
 def binary_id_search(object,filename,desired_id):
     name = 'id'
-
+    # не дає вийти значенню номеру за межі файлу
+    f = open(filename,'r')
+    f.seek(-0,2) #f.seek(-self.length,2)
+    border = f.tell() // object.length
+    if(get_number_id(desired_id) < border):
+        border = get_number_id(desired_id)
+    f.close()
     #write func to check object,filevalue and id class compatibility
     # напиши функцію перевірки сумісності вхідних даних
-
     def read_bin_value(name,fln,obj,adr):
         line = read_file_line(fln,obj.length,adr)
         object.line = line
@@ -75,6 +80,8 @@ def binary_id_search(object,filename,desired_id):
     # a = a_index, -//-, n = id
     # a_value = a_id, -//-
     def bin(a,b,n):
+        if(a == b):
+            return -1        
         a_value = read_bin_value(name,filename,object,a)
         b_value = read_bin_value(name,filename,object,b)
         c = (a+b)//2
@@ -89,7 +96,7 @@ def binary_id_search(object,filename,desired_id):
             if(n == b_value):
                 return b
 
-    return bin(0,get_number_id(desired_id),desired_id)
+    return bin(0,border,desired_id)
 ################################################################
 
 import os
@@ -148,8 +155,7 @@ class use_file:
     def add_file(self,users_tg_id,text,reviewed_id=10000000001,user_class='viewer'):
         #create id
         id = self.create_id()
-        # change count in global_statistic
-        self.stat_increment()
+        # Додай перевірку існування для текстів та рев'ю
         match self.class_name:
             case 'user':
                 # path
@@ -161,7 +167,7 @@ class use_file:
                 open(f'{path_data}/{user_log_review_id}','w').close()
                 open(f'{path_data}/{user_log_rate_id}','w').close()
                 #
-                line = pd.DataFrame(np.array([0,id,users_tg_id,global_user_class_value_short[user_class],0,0,0,0,00000,000,0,0]), columns=self.column_index.columns)
+                line = pd.DataFrame(np.array([0,id,users_tg_id,global_user_class_value_short[user_class],0,0,0,0,00000,000,0,0,0,0,0]), columns=self.column_index.columns)
                 self.write_line('all',line)
                 self.write_file_line()                
                 del line
@@ -189,10 +195,19 @@ class use_file:
                         f.close()
                     case 'rate':
                         self.create_directory(reviewed_id)
+                        #Додай перевірку чи робив це юзер до цього
+                        rate_object = log_rate_file(user_class,reviewed_id)
+                        if(os.path.isfile(self.filename)):
+                            if(rate_object.binary_id_search(reviewed_id) != -1):
+                                del rate_object
+#########################################################################################################################################
+                                return 'Rate for this text already exist'
+#########################################################################################################################################
+                        #Додав
                 #additional file
                 match self.class_name:
                     case 'text':
-                        line = pd.DataFrame(np.array([0,id,user_id,len(text),'W',0,00000,000,0,0]), columns=self.column_index.columns)
+                        line = pd.DataFrame(np.array([0,id,user_id,len(text),'W',0,00000,000,0,0,0,0,0]), columns=self.column_index.columns)
                         self.write_line('all',line)
                         self.write_file_line()
                         # create 'reviews_list_code' file
@@ -201,11 +216,17 @@ class use_file:
                         open(f'{path_data}/{text_author_comment}','w').close()
                         del line
                     case 'review':
-                        line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,len(text),00000,000,0,0]), columns=self.column_index.columns)
+                        line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,len(text),00000,000,0,0,0,0,0]), columns=self.column_index.columns)
                         self.write_line('all',line)
                         self.write_file_line()
                         del line
                         # Додай збільшення count в логу тексту і може ще десь
+                        text_object = log_text_line()
+                        number_line = text_object.binary_id_search(reviewed_id)
+                        review_count = text_object.read_file_line_value('review_count',number_line)
+                        text_object.rewrite_file_line_value('review_count',number_line,review_count + 1)
+                        del text_object
+                        # Додав
                     case 'rate':
                         # Додай зміну середнього значення
                         reviewed_object = get_object_id(reviewed_id)
@@ -217,7 +238,6 @@ class use_file:
                         reviewed_object.rewrite_file_line_value(f'rates_{global_user_class_value_short[user_class]}_count',number_line,count_rate+1)
                         del reviewed_object
                         # Додав
-                        #Додай перевірку чи робив це юзер до цього
                         line = pd.DataFrame(np.array([0,reviewed_id,id,user_id,user_class]), columns=self.column_index.columns)
                         self.write_line('all',line)
                         self.write_file_line()
@@ -238,8 +258,10 @@ class use_file:
                 user = log_user_line()
                 number_line = user.binary_id_search(user_id)
                 count_text = user.read_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line)
-                user.rewrite_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line,int(count_text) + 1)
+                user.rewrite_file_line_value(f'çount_{global_class_value_short[self.class_name]}',number_line,count_text + 1)
                 del user
+        # change count in global_statistic
+        self.stat_increment()
         #return  'ok'
     
     def delete_file(self,id,user_class = 'viewer'):
@@ -264,12 +286,12 @@ class use_file:
             rate_data.rewrite_file_line_value('delete_flag',number_line,0)
             del rate_data
         #return 'ok'
-
-    def edit_file(self):
-        return
-    
-    def read_file():
-        return
+    # Для кожного різне
+    #def edit_file(self):
+    #    return
+    # Для кожного різне
+    #def read_file():
+    #    return
 
 class user_file(log_user_line,use_file):
     
@@ -281,92 +303,38 @@ class user_file(log_user_line,use_file):
         self._users_text_id = log_user_file('text_id',tg_id)
         self._users_review_id = log_user_file('review_id',tg_id)
         self._users_rate_id = log_user_file('rate_id',tg_id)
-    
-    def add_user():
-        #create id
-        #make folder
-        #add line to path_user_log
-        #create users_log_files
-        #change global statistic
-        return
-    
-    def del_user():
-        #change in file path_user_log value in 'delete_flag' column, from 0 to 1
-        #add to delete list
-        #delete folder recursively
-        return
-    
-    def restore():
-        #change in file path_user_log value in 'delete_flag' column, from 1 to 0
-        return
 
     def edit_user():
         #edit users files
         return
     
+    def show_first_n_line(self,class_name):
+        
+        match class_name:
+            case 'text':
+                class_object_users = self._users_text_id
+                class_object = log_text_line()
+            case 'rate':
+                class_object_users = self._users_rate_id
+                class_object = log_rate_line()
+            case 'review':
+                class_object_users = self._users_review_id
+                class_object = log_review_line()
+        number_line = 0
+        #for
+        class_name_id_value = class_object_users.read_file_line_value('id',number_line*class_object_users.length)
+        number_line = class_object.binary_id_search(class_name_id_value)
+        match class_name:
+            case 'text' | 'review':
+                
+            case 'rate':
+                    
+
     def info():
         #write 'bio', and log
         return
-    
+
 class text_file(log_text_line,use_file):
-    d = ''    
-    def add_text(self,users_tg_id,text):
-        # create text_id to text
-        text_id = self.create_id()
-        # make folder (check if folder already exist) path_text_data/{text_id}
-        self.create_directory(text_id)
-        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(text_id)
-        # add line to path_text_log
-        user = log_user_file('bio',users_tg_id)
-        user_id = user.read_file_line_value('id',0)
-        #?
-        del user
-        #?
-        # len(text)? під питанням
-        line = pd.DataFrame(np.array([0,text_id,user_id,len(text),'W',0,00000,000,0,0]), columns=self.column_index.columns)
-        self.write_line('all',line)
-        self.write_file_line()
-        # create 'reviews_list_code' file
-        open(f'{path_data}/{text_reviews_code}','w').close()
-        # create 'author_comment' file
-        open(f'{path_data}/{text_author_comment}','w').close()
-        # create 'data_text' file and add text from telegraph in
-        f = open(f'{path_data}/{text_data}','w')
-        f.write('some telegraph shit',text)
-        f.close()
-        # add text_id to user_log_text_id by path_user_data/{author_id}
-        user = log_user_file('text_id',users_tg_id)
-        user.write_line('id',text_id)
-        user.write_file_line()
-        #?
-        del user
-        #?
-        # change count in path_user_log
-        user = log_user_line()
-        number_line = user.binary_id_search(user_id)
-        count_text = user.read_file_line_value('çount_t',number_line)
-        user.rewrite_file_line_value('çount_t',number_line,count_text + 1)
-        # change count in global_statistic
-        self.stat_increment()
-        return
-    
-    def del_text(self,text_id):
-        # change in file path_text_log value in 'delete_flag' column, from 0 to 1
-        number_line = self.binary_id_search(text_id)
-        self.rewrite_file_line_value('delete_flag',number_line,1)
-        # add line to path_text_del_list
-        # ?
-        # by some time delete all in loop
-        # ?
-        return
-    
-    def restore_text(self,text_id):
-        # change in file path_text_log value in 'delete_flag' column, from 1 to 0
-        number_line = self.binary_id_search(text_id)
-        self.rewrite_file_line_value('delete_flag',number_line,0)
-        # del line in path_text_del_list
-        # ?
-        #return
     
     def edit_text(self,text_id,text):
         # change text in path_text_data/{text_id}/text_data
@@ -415,48 +383,6 @@ class text_file(log_text_line,use_file):
 
 class review_file(log_review_line,use_file):
     
-    # дуже схоже на функцію add для text
-    def add_review(self,reviewed_id,users_tg_id,text):
-        # create review_id to rewiev
-        review_id = self.create_id()
-        # make folder with name_id
-        self.create_directory(review_id)
-        path_data = globals()[f'path_{self.class_name}_data'] + '/' + str(review_id)
-        # add line to log
-        user = log_user_file('bio',users_tg_id)
-        user_id = user.read_file_line_value('id',0)
-        #?
-        del user
-        #?
-        line = pd.DataFrame(np.array([0,reviewed_id,review_id,user_id,len(text),00000,000,0,0]), columns=self.column_index.columns)
-        self.write_line('all',line)
-        self.write_file_line()
-        # create data_file and fill by text
-        f = open(f'{path_data}/{review_data}','w')
-        f.write('some user opinion shit',text)
-        f.close()
-        # add review_id to user_log
-        user = log_user_file('review_id',users_tg_id)
-        user.write_line('id',review_id)
-        user.write_file_line()
-        #?
-        del user
-        #?
-        # change count in path_user_log
-        user = log_user_line()
-        number_line = user.binary_id_search(user_id)
-        count_review = user.read_file_line_value('çount_r',number_line)
-        user.rewrite_file_line_value('çount_r',number_line,count_review + 1)        
-        # change count in global statistic
-        self.stat_increment()
-        return
-    
-    def del_review():
-        #change in file path_review_log value in 'delete_flag' column, from 0 to 1
-        #add line to path_review_del_list
-        #
-        return
-    
     def edit_review():
         #change text in path_review_data/{review_id}/review_data
         #change in file path_text_log value in 'size' colum
@@ -467,18 +393,6 @@ class review_file(log_review_line,use_file):
         return
 
 class rate_file(log_rate_line,use_file):
-
-    def add_rate():
-        #create path_rate_data/{class_id}/{user_class_file}
-        #create rate_id
-        #add line to path_rate_data/{class_id}/{user_class_file}
-        #change global statistic
-        #add rate_id to users
-        return
-    
-    def del_rate():
-
-        return
     
     def edit_rate():
         #chage 'rate' in path_rate_data/{class_id}/{user_class_file}
@@ -490,6 +404,7 @@ class rate_file(log_rate_line,use_file):
     
 
     
+    # Зважаючи на останні зміни треба повністю передивитись
     # need to debug but theoretical complite
     def count_rate_average(id):
         # calculate changes from database

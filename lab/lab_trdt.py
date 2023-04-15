@@ -71,6 +71,13 @@ def dif_one(mass_x,mass_y,n):
   #new_mass_y.append(0)
   return new_mass_y,new_mass_x
 
+def undif_one(mass_x,mass_y):
+    new_mass_y = [0]*mass_y
+    new_mass_y[0] = mass_y[0]
+    for i in range(1,len(mass_x),1):
+      new_mass_y[i] = mass_y[i]*(mass_x[i] - mass_x[i-1]) + new_mass_y[i-1]
+    return new_mass_y
+
 #виводить медіанне значення
 def mean(mass_x,mass_y,n):
   new_mass_y = [0]*len(mass_x)
@@ -129,6 +136,20 @@ def interp(mass_x,mass_y,n,extend_c):
        new_mass_x.append(x_interp[j])
   return new_mass_y,new_mass_x
 
+def dta_temperature(mass_x,mass_y):
+    new_mass_y = [0]*mass_y
+    for i in range(len(mass_x)):
+      new_mass_y[i] = mass_y[i] + mass_x[i]
+    return new_mass_y
+
+def percent_of_mass(mass_y):
+  m1 = 4.1415
+  new_mass_y = [0]*len(mass_y)
+  for i in range(len(mass_y)):
+    new_mass_y[i] = 1+(mass_y[i]/1000.0)/m1
+    new_mass_y[i] *= 1000
+  return new_mass_y
+
 print(tg_mass[:,0])
 print(dta_mass[:,0])
 ax = grf()
@@ -136,7 +157,7 @@ ax = grf()
 #ax.plot(tg_mass[:,0],dif_tg_mass,label='tg_mass')
 print(len(tg_mass[:,0]))
 dif_tg_mass,dif_tg_mass_x = interp(tg_mass[:,0],tg_mass[:,1],10,100)
-ax.scatter(dif_tg_mass_x,dif_tg_mass,label='tg_not_dif')
+#ax.scatter(dif_tg_mass_x,dif_tg_mass,label='tg_not_dif')
 print(len(dif_tg_mass))
 print(len(dif_tg_mass_x))
 dif_tg_mass,dif_tg_mass_x = dif_one(dif_tg_mass_x,dif_tg_mass,1)
@@ -147,11 +168,25 @@ dif_2_tg_mass,dif_2_tg_mass_x = dif_one(dif_tg_mass_x,dif_tg_mass,1)
 dif_2_tg_mass = average(dif_2_tg_mass_x,dif_2_tg_mass,500)
 dif_2_tg_mass = mean(dif_2_tg_mass_x,dif_2_tg_mass,20)
 
-ax.plot(dif_tg_mass_x,dif_tg_mass,label='tg_dif')
-ax.plot(dif_2_tg_mass_x,dif_2_tg_mass,label='tg_dif_2')
+#ax.plot(dif_tg_mass_x,dif_tg_mass,label='tg_dif')
+#ax.plot(dif_2_tg_mass_x,dif_2_tg_mass,label='tg_dif_2')
+#print(dta_t)
+#print(dif_dta_t)
+#dta_mass_undif = undif_one(dta_mass[:,0],dta_mass[:,1])
+#ax.plot(tg_mass[:,0],tg_mass[:,1],label='tg')
+#ax.plot(dta_mass[:,0],dta_mass[:,1],label='dta')
 
-ax.plot(tg_mass[:,0],tg_mass[:,1],label='tg')
-ax.plot(dta_mass[:,0],dta_mass[:,1],label='dta')
+tg_mass_p = percent_of_mass(tg_mass[:,1])
+ax.plot(tg_mass[:,0],tg_mass_p,label='tg_p')
+
+#dta_t = dta_temperature(dta_mass[:,0],dta_mass[:,1])
+#dif_dta_t,dif_dta_t_x = dif_one(dta_mass[:,0],dta_t,10)
+
+#ax.plot(dta_mass[:,0],dta_t,label='dta_t')
+#ax.plot(dif_dta_t_x,dif_dta_t,label='dta_t_dif')
+
+#ax.plot(dta_mass[:,0],dta_mass_undif,label='dta_undif')
+
 #ax.plot(tg_mass[:,0],(-26.6584 - (dm_mass[:])*(174.19/100.09))*100/(-26.6584))
 ax.legend()
 plt.show()
