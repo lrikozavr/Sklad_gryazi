@@ -49,33 +49,34 @@ def LossFunction(name,y_prob,y):
 
 class Optimizer():
     time_step_epoch = 1
-    
+    e = 1e-10
+    alpha = 1e-4
+
     def __init__(self):
         pass
     
     def __init__(self,log):
         last_name = ''
         index_layer = 0
+        self.mv = {'layer_1': ''}
         for key in log.keys():
-            name = f'layer_{index_layer}'
-            if(last_name==''):
-                self.m = {name: np.zeros((1,log[key]))}
-                self.v = {name: np.zeros((1,log[key]))}
-            else:
-                self.m[name] = np.zeros((log[last_name],log[key]))
-                self.v[name] = np.zeros((log[last_name],log[key]))
+            if(not last_name == ''):
+                self.mv[f'layer_{index_layer}'] = np.zeros((2,log[last_name],log[key]))
             last_name = key
             index_layer += 1
 
-    def adam(self,layer_index,i,j,grad_value,b1 = 0.9,b2 = 0.99,alpha = 0.001,e = 1e-10):
-        self.m1[f'layer_{layer_index}'][i][j] = b1*self.m[f'layer_{layer_index}'][i][j] + (1-b1)*grad_value
-        self.v1[f'layer_{layer_index}'][i][j] = b2*self.v[f'layer_{layer_index}'][i][j] + (1-b2)*grad_value**2
-        mt = self.m1[f'layer_{layer_index}'][i][j]/(1-pow(b1,self.t))
-        vt = self.v1[f'layer_{layer_index}'][i][j]/(1-pow(b2,self.t))
-        return -alpha*mt/(pow(vt,0.5) + e)
+    def get_adam_mv_value():
+        return
 
-    def grad(grad_value,alpha = 0.001,e = 1e-10):
-        return -alpha*grad_value
+    def adam(self,layer_index,i,j,grad_value,b1 = 0.9,b2 = 0.99):
+        self.mv[f'layer_{layer_index}'][0][i][j] = b1*self.mv[f'layer_{layer_index}'][0][i][j] + (1-b1)*grad_value
+        self.mv[f'layer_{layer_index}'][1][i][j] = b2*self.mv[f'layer_{layer_index}'][1][i][j] + (1-b2)*grad_value**2
+        mt = self.mv[f'layer_{layer_index}'][0][i][j]/(1-pow(b1,self.t))
+        vt = self.mv[f'layer_{layer_index}'][1][i][j]/(1-pow(b2,self.t))
+        return -self.alpha*mt/(pow(vt,0.5) + self.e)
+
+    def grad(self,grad_value):
+        return -self.alpha*grad_value
 
     def optimazer(self,name,grad_value,layer_index,i,j):
         match name:
@@ -83,6 +84,33 @@ class Optimizer():
               return self.adam(layer_index,i,j)
           case 'grad':
               return self.grad(grad_value)
+
+class Dense():
+    neuron_count = 1
+    
+    def __init__(self):
+        pass
+    
+    def __init__(self,neuron_count, first_layer = 'yes', activation_function = 'linear'):
+        if(not first_layer == 'yes'):
+            self.neuron_weight = np.ones((2,first_layer.neuron_count,neuron_count))
+            self.activation_function = activation_function
+            self.neuron_value = np.zeros((2,neuron_count))
+        else:
+            self.neuron_value = np.zeros((1,neuron_count))
+        self.first_layer = first_layer
+        self.neuron_count = neuron_count
+
+class Model():
+    def __init__(self):
+        pass
+    
+    def get_neuron_network_from_dense_class(self,dense_class_value):
+        np.array()
+       
+
+def return_network():
+
 
 class NN_one(Optimizer):
     layer_count=0
@@ -219,7 +247,7 @@ class NN_one(Optimizer):
                                                                                                                     grad_value = self.network_weight_grad[f'layer_{layer_index}'][i][j],
                                                                                                                     i=i,
                                                                                                                     j=j)
-    def fit(self,x,y,epochs):
+    def fit_NN_one(self,x,y,epochs):
         self.set_param(self.optimization_function,y)
         print(self.network_neuron_value)
         for i in range(self.network_neuron_count['layer_0']):
@@ -250,17 +278,16 @@ print(b[0].y)
 
 # визначення learning_rate, loss_function
 
-class NN_multiple(NN_one):
+class NN_multiple():
 
-    def __init__(self,class_sample,x,y,optimization_function):
+    def __init__(self,class_sample,optimization_function,epochs,batch_size):
         self.class_sample = class_sample
-        self.x_label = x
-        self.y_label = y
         self.optimization_function = optimization_function
         self.count_label = len(self.x_label)
+        self.epochs = epochs
+        self.batch_size = batch_size
 
-    def batch_separate(self,network_weight_value,batch_size,thread = 4):
-        epoch = 1
+    def batch_separate(self,network_weight_value,batch_size,epoch = 1,thread = 4):
         # зберігаємо макет структури НМ
         log = self.class_sample.network_log_write()
         # кількість класів які одночасно існують       
@@ -268,6 +295,8 @@ class NN_multiple(NN_one):
         # створюємо змінну для рахування суми
         self.class_sample.network_weight_value_null(0)
         network_weight_sum = self.class_sample.network_weight_value_write()
+        
+        mv_sum = self.class_sample.optim.mv
 
         for index_batch in range(0,self.count_label,batch_size):
             x_vector = self.x_label[index_batch*batch_size:(index_batch+1)*batch_size,:]
@@ -280,29 +309,54 @@ class NN_multiple(NN_one):
                 with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     for i in range(0,batch_size,MAX_WORKERS):
                         for j in range(MAX_WORKERS):
-                            executor.submit(batch_size_class_nn[i+j].fit,x_vector[i+j,:],y_vector[i+j],epoch)    
+                            executor.submit(batch_size_class_nn[i+j].fit_NN_one,x_vector[i+j,:],y_vector[i+j],epoch)    
             else:
                 temp_batch_size = batch_size - (batch_size // thread)
                 with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     for i in range(0,batch_size,MAX_WORKERS):
                         for j in range(MAX_WORKERS):
-                            executor.submit(batch_size_class_nn[i+j].fit,x_vector[i+j,:],epoch)    
+                            executor.submit(batch_size_class_nn[i+j].fit_NN_one,x_vector[i+j,:],epoch)    
                     for i in range(temp_batch_size,batch_size,1):
-                        executor.submit(batch_size_class_nn[i].fit,x_vector[i,:],y_vector[i+j],epoch)
+                        executor.submit(batch_size_class_nn[i].fit_NN_one,x_vector[i,:],y_vector[i+j],epoch)
 
             for i in range(batch_size):
                 for name_layer in self.class_sample.network_weight_value.keys():
                     network_weight_sum[name_layer] += batch_size_class_nn[i].network_weight_value[name_layer]
+                    mv_sum[name_layer] += batch_size_class_nn[i].optim.mv[name_layer]
                 
                 batch_size_class_nn[i].network_weight_value_read(network_weight_value)
         
         for name_layer in self.class_sample.network_weight_value.keys():
             network_weight_sum[name_layer] /= self.count_label
+        
+        return network_weight_sum
 
     
+    def fit_NN_multiple(self,x,y):
+        self.x_label = x
+        self.y_label = y
+        #self.class_sample.network_weight_value_null(1)
+        network_weight_value = self.class_sample.network_weight_value_write()
+        for i_epoch in range(1,self.epochs+1,1):
+            network_weight_value = self.batch_separate(network_weight_value = network_weight_value,
+                                                        batch_size = self.batch_size,
+                                                        epoch = i_epoch)
+
+class Model(NN_one,NN_multiple):
+    
+    def __init__(self):
+        pass
+
+model = Model()
 
 
-
+a = NN_one(7)
+a.Dense(7,'linear')
+a.Dense(7,'linear')
+a.Dense(7,'linear')
+a.Dense(1,'sigmoid')
+b = NN_multiple(a,'adam',10,1024)
+b.fit_NN_multiple(x,y)
 
 
 
