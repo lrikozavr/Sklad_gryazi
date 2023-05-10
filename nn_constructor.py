@@ -2,6 +2,13 @@
 
 import numpy as np
 import pandas as pd
+    
+import time
+def loading_progress_bar(percent):
+    bar_length = 50
+    filled_length = int(percent/100 * bar_length)
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+    print(f'\rProgress: |{bar}| {percent:.0f}% ', end='')
 
 import math
 def ActivationFunction(name,value):
@@ -207,6 +214,11 @@ class Model():
 
     def fit_one_nn(self,nn_value,opti,x,y,epoch):
         nn_value[0][1][0,:] = x
+        # треба прослідкувати щоб воно не давало посилання на self змінну, а передавало його значення
+        # бо інакше воно буде працювати некоректно
+        nn_value[:,2] = self.neural_network[:,2]
+        opti.mv = self.optim.mv
+        #
         opti.time_step_epoch = epoch
         self.per_all_at_once(nn_value)
         self.backpropagation(nn_value,opti,y)
@@ -216,44 +228,68 @@ class Model():
         return LossFunction('square',nn_value[self.layer_count-1][1][0][0],y)
 
 
-    def batch_separate(self,x,y,count_label,batch_size,epoch = 1,thread = 4):
+    def batch_separate(self,x,y,nn_sum,optim_sum,batch_size_nn,batch_size_optim,count_label,batch_size,epoch = 1,thread = 4):
+        batch_count = count_label // batch_size
+        for index_batch in range(0, batch_count, 1):
+            loading_progress_bar(index_batch / batch_count)
+            #
+            #for i in range(batch_size):
+            #    batch_size_nn[i][:,2] = self.neural_network[:,2] -> nn_value[:,2] = self.neural_network[:,2]
+            #    batch_size_optim[i].mv = self.optim.mv
+            #
+            MAX_WORKERS = thread
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                for i in range(batch_size):
+                    executor.submit(self.fit_one_nn,batch_size_nn[i],batch_size_optim[i],x[index_batch][i,:],y[index_batch][i],epoch)
+            #
+            for i in range(batch_size):
+                nn_sum[:,2] += batch_size_nn[i][:,2]
+                optim_sum.mv += batch_size_optim[i].mv
+            #
+            print()
+        #
+        self.neural_network[:,2] = nn_sum[:,2] / count_label
+        self.optim.mv = optim_sum.mv / count_label
+        nn_sum[:,2].fill(0)
+        optim_sum.mv.fill(0)
+
+    def fit(self,x,y,batch_size,epochs):
         # кількість NN які одночасно існують
         batch_size_nn = [self.return_network_from_log(self.neural_network_log) for i in range(batch_size)]
         #
         batch_size_optim = [Optimizer(self.neural_network_log) for i in range(batch_size)]
         # створюємо змінну для рахування суми
-        neural_network_sum = self.return_network_from_log(self.neural_network_log)
-        neural_network_sum[:,2].fill(0)
+        nn_sum = self.return_network_from_log(self.neural_network_log)
+        nn_sum[:,2].fill(0)
         
         optim_sum = Optimizer(self.neural_network_log)
         optim_sum.mv.fill(0)
 
+        count_label = len(x)
+        x_vector,y_vector = [],[]
         for index_batch in range(0,count_label,batch_size):
-            x_vector = x[index_batch*batch_size:(index_batch+1)*batch_size,:]
-            y_vector = y[index_batch*batch_size:(index_batch+1)*batch_size]
+            start = index_batch
+            finish = index_batch + batch_size - 1
+            if(finish > count_label):
+                finish = count_label - 1
+            x_vector.append(x[start:finish,:])
+            y_vector.append(y[start:finish])
 
-            MAX_WORKERS = thread
-
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                for i in range(batch_size):
-                    executor.submit(self.fit_one_nn,batch_size_nn[i],batch_size_optim[i],x_vector[i,:],y_vector[i],epoch)    
-
-
-            for i in range(batch_size):
-                neural_network_sum[:,2] += batch_size_nn[i][:,2]
-                optim_sum.mv += batch_size_optim[i].mv
-                #
-                batch_size_nn[i][:,2] = self.neural_network[:,2]
-                batch_size_optim[i].mv = self.optim.mv
-        
-        self.neural_network[:,2] = neural_network_sum[:,2] / count_label
-        self.optim.mv = optim_sum.mv / count_label
-
-    def fit(self,x,y,batch_size,epochs):
         for i in range(1,epochs,1):
-            self.batch_separate(x,y,len(y),batch_size,i)
-        
+            self.batch_separate(x,y,nn_sum,optim_sum,batch_size_nn,batch_size_optim,count_label,batch_size,i)
+
+    def predict(self,x):
+        count_label = len(x)
+        y = np.zeros(count_label)
+        for i in range(count_label):
+            nn_value = self.return_network_from_log(self.neural_network_log)
+            nn_value[0][1][0,:] = x[i,:]
+            nn_value[:,2] = self.neural_network[:,2]
+            self.per_all_at_once(nn_value)
+            y[i] = nn_value[self.layer_count-1][1][0][0]
+        return y
+            
 
 
 a1 = Dense(7)
