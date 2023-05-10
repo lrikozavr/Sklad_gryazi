@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 import math
-def activation_function(name,value):
+def ActivationFunction(name,value):
        
     # функція активації
     def sigmoid(x):
@@ -29,13 +29,13 @@ def activation_function(name,value):
       case 'derivative_sigmoid':
         return derivative_sigmoid(value)
       case _:
-          Exception('Fuck off')
+          Exception('Wrong activationfunction name')
 
 def LossFunction(name,y_prob,y):
-    
+    # квадратична функція втрат
     def square(y_prob,y):
         return 0.5*pow(y_prob-y,2)
-    
+    # деривативна версія
     def derivative_square(y_prob,y):
         return y_prob-y
     
@@ -44,6 +44,8 @@ def LossFunction(name,y_prob,y):
           return square(y_prob,y)
        case 'derivative_square':
           return derivative_square(y_prob,y)
+       case _:
+          Exception('Wrong lossfunction name')
 #print(activation_function('sigmoid',10.0))
 #print(activation_function('linear',10.0))
 
@@ -56,29 +58,25 @@ class Optimizer():
         pass
     
     def __init__(self,log):
-        last_name = ''
-        index_layer = 0
-        self.mv = {'layer_1': ''}
-        for key in log.keys():
-            if(not last_name == ''):
-                self.mv[f'layer_{index_layer}'] = np.zeros((2,log[last_name],log[key]))
-            last_name = key
-            index_layer += 1
+        self.mv = []
+        self.mv.append([])
+        for index in range(1,len(log),1):
+            self.mv.append(np.zeros((2,log[index-1],log[index])))
 
     def get_adam_mv_value():
         return
 
     def adam(self,layer_index,i,j,grad_value,b1 = 0.9,b2 = 0.99):
-        self.mv[f'layer_{layer_index}'][0][i][j] = b1*self.mv[f'layer_{layer_index}'][0][i][j] + (1-b1)*grad_value
-        self.mv[f'layer_{layer_index}'][1][i][j] = b2*self.mv[f'layer_{layer_index}'][1][i][j] + (1-b2)*grad_value**2
-        mt = self.mv[f'layer_{layer_index}'][0][i][j]/(1-pow(b1,self.t))
-        vt = self.mv[f'layer_{layer_index}'][1][i][j]/(1-pow(b2,self.t))
+        self.mv[layer_index][0][i][j] = b1*self.mv[layer_index][0][i][j] + (1-b1)*grad_value
+        self.mv[layer_index][1][i][j] = b2*self.mv[layer_index][1][i][j] + (1-b2)*grad_value**2
+        mt = self.mv[layer_index][0][i][j]/(1-pow(b1,self.time_step_epoch))
+        vt = self.mv[layer_index][1][i][j]/(1-pow(b2,self.time_step_epoch))
         return -self.alpha*mt/(pow(vt,0.5) + self.e)
 
     def grad(self,grad_value):
         return -self.alpha*grad_value
 
-    def optimazer(self,name,grad_value,layer_index,i,j):
+    def optimizer(self,name,grad_value,layer_index,i,j):
         match name:
           case 'adam':
               return self.adam(layer_index,i,j)
@@ -91,25 +89,188 @@ class Dense():
     def __init__(self):
         pass
     
-    def __init__(self,neuron_count, first_layer = 'yes', activation_function = 'linear'):
+    def __init__(self,neuron_count, activation_function = 'linear', first_layer = 'yes'):
         if(not first_layer == 'yes'):
             self.neuron_weight = np.ones((2,first_layer.neuron_count,neuron_count))
-            self.activation_function = activation_function
             self.neuron_value = np.zeros((2,neuron_count))
         else:
+            self.neuron_weight = np.ones((1,neuron_count)) 
             self.neuron_value = np.zeros((1,neuron_count))
+        self.activation_function = activation_function
         self.first_layer = first_layer
         self.neuron_count = neuron_count
 
 class Model():
+
+    #optimizer = Optimizer()
+    #optimizer_name = 'grad'
+
     def __init__(self):
         pass
     
-    def get_neuron_network_from_dense_class(self,dense_class_value):
-        np.array()
-       
+    def get_neuron_network_from_dense_class(self,a):
+        network = []
+        neuron_count = a.neuron_count
+        if (a.first_layer == 'yes'):
+            network.append(np.array([(a.activation_function,a.neuron_value,a.neuron_weight)],
+                            np.dtype([('activation_function','S12'),
+                                      ('neuron_value','f8',(1,neuron_count)),
+                                      ('neuron_weight','f8',(1,neuron_count))]))[0])
+            return network
 
-def return_network():
+        network = self.get_neuron_network_from_dense_class(a.first_layer)
+
+        last_neuron_count = a.first_layer.neuron_count
+        network.append(np.array([(a.activation_function,a.neuron_value,a.neuron_weight)],
+                    np.dtype([('activation_function','S12'),
+                            ('neuron_value','f8',(2,neuron_count)),
+                            ('neuron_weight_value','f8',(2,last_neuron_count,neuron_count))]))[0])
+        return network
+
+    def return_network_log(self,a):
+        log = []
+        if (a.first_layer == 'yes'):
+            log.append([a.activation_function,a.neuron_count])
+            return log
+        log = self.return_network_log(a.first_layer)
+        log.append([a.activation_function,a.neuron_count,a.first_layer.neuron_count])
+        return log
+    
+    def return_network_from_log(self,log):
+        network = []    
+        network.append([log[0][0],np.zeros((1,log[0][1])),np.zeros((1,log[0][1]))])
+        for layer_index in range(len(log)):
+            network.append([log[layer_index][0],np.zeros((2,log[layer_index][1])),np.ones((2,log[layer_index][2],log[layer_index][1]))])
+        return network
+
+    def __init__(self,dense_class_item):
+        self.neural_network = self.get_neuron_network_from_dense_class(dense_class_item)
+        self.neural_network_log = self.return_network_log(dense_class_item)
+        self.optim = Optimizer(self.neural_network_log)
+        self.layer_count = len(self.neural_network_log)
+
+    def perseptron(self,neural_network_value,layer_index,neuron_index):
+      if(layer_index > 0 and layer_index < self.layer_count):
+        if(neuron_index >= 0 and neuron_index < self.neuron_network_log[layer_index][1]):
+          sum = neural_network_value[layer_index][2][0][neuron_index, : ].dot(neural_network_value[layer_index-1][1][0,:])
+          #print(sum)
+          #print(self.network_neuron_value[f'layer_{layer_index}'][0,neuron_index])
+          #print(self.network_activation_function[f'layer_{layer_index}'])
+          #print(activation_function(self.network_activation_function[f'layer_{layer_index}'],sum))
+          neural_network_value[layer_index][1][0,neuron_index] = ActivationFunction(neural_network_value[layer_index][0],sum)
+          neural_network_value[layer_index][1][1,neuron_index] = ActivationFunction(f"derivative_{neural_network_value[layer_index][0]}",sum)
+
+    def per_all_at_once(self,neural_network_value):
+      for layer_index in range(1,self.layer_count,1):
+        for j in range(self.neural_network_log[layer_index][1]):
+          self.perseptron(neural_network_value,layer_index,j)
+
+    def perceptron_grad(self,nn_value,layer_index,i,j):
+        if(layer_index > 0):
+            if(layer_index < self.layer_count-1):
+                nn_value[layer_index][2][1][i][j] = (nn_value[layer_index-1][1][0][j]/nn_value[layer_index][1][0][j])*nn_value[layer_index][1][1][i]*nn_value[layer_index+1][2][0][:,i].dot(nn_value[layer_index+1][2][1][:,j])
+            elif(layer_index == self.layer_count-1):
+                nn_value[layer_index][2][1][i][j] = nn_value[layer_index][1][1][i]*nn_value[layer_index-1][1][0][j]
+    
+    def grad_all_at_once(self,nn_value):
+        for layer_index in range(self.layer_count,1,-1):
+            for i in range(self.neural_network_log[layer_index][1]):
+                for j in range(self.neural_network_log[layer_index-1][1]):
+                    self.perceptron_grad(nn_value,layer_index,i,j)
+
+    def backpropagation(self,nn_value,opti,y):
+        self.grad_all_at_once(nn_value)
+        for layer_index in range(self.layer_count,1,-1):
+            for i in range(self.neural_network_value[layer_index][1]):
+                for j in range(self.neural_network_value[layer_index - 1][1]):
+                    #print(LossFunction('derivative_square',self.network_neuron_value[f'layer_{self.layer_count}'][0][0],self.y))
+                    #exit()
+                    nn_value[layer_index][2][0][i][j] +=  LossFunction(name = 'derivative_square',
+                                                                       y_prob = nn_value[self.layer_count-1][1][0][0],
+                                                                       y = y)*opti.optimizer(name = self.optimizer_name,
+                                                                                                  grad_value = nn_value[layer_index][2][1][i][j],
+                                                                                                  layer_index=layer_index,i=i,j=j)
+
+    def fit_NN_one(self,nn_value,opti,x,y,epochs):
+        #print(self.network_neuron_value)
+        
+        #opti = Optimizer(self.neural_network_log)
+        #self.optimizer_name = 'adam'
+        nn_value[0][1][0,:] = x
+        opti.time_step_epoch = 1
+        for epoch in range(epochs):
+            opti.time_step_epoch += epoch
+            self.per_all_at_once(nn_value)
+            self.backpropagation(nn_value,opti,y)
+        self.per_all_at_once(nn_value)
+        return LossFunction('square',nn_value[self.layer_count-1][1][0][0],y)
+
+    def fit_one_nn(self,nn_value,opti,x,y,epoch):
+        nn_value[0][1][0,:] = x
+        opti.time_step_epoch = epoch
+        self.per_all_at_once(nn_value)
+        self.backpropagation(nn_value,opti,y)
+        self.per_all_at_once(nn_value)
+        #nn_sum[1:(self.layer_count-1),2] += nn_value[1:(self.layer_count-1),2]
+        #opti_sum += opti.mv
+        return LossFunction('square',nn_value[self.layer_count-1][1][0][0],y)
+
+
+    def batch_separate(self,x,y,count_label,batch_size,epoch = 1,thread = 4):
+        # кількість NN які одночасно існують
+        batch_size_nn = [self.return_network_from_log(self.neural_network_log) for i in range(batch_size)]
+        #
+        batch_size_optim = [Optimizer(self.neural_network_log) for i in range(batch_size)]
+        # створюємо змінну для рахування суми
+        neural_network_sum = self.return_network_from_log(self.neural_network_log)
+        neural_network_sum[:,2].fill(0)
+        
+        optim_sum = Optimizer(self.neural_network_log)
+        optim_sum.mv.fill(0)
+
+        for index_batch in range(0,count_label,batch_size):
+            x_vector = x[index_batch*batch_size:(index_batch+1)*batch_size,:]
+            y_vector = y[index_batch*batch_size:(index_batch+1)*batch_size]
+
+            MAX_WORKERS = thread
+
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                for i in range(batch_size):
+                    executor.submit(self.fit_one_nn,batch_size_nn[i],batch_size_optim[i],x_vector[i,:],y_vector[i],epoch)    
+
+
+            for i in range(batch_size):
+                neural_network_sum[:,2] += batch_size_nn[i][:,2]
+                optim_sum.mv += batch_size_optim[i].mv
+                #
+                batch_size_nn[i][:,2] = self.neural_network[:,2]
+                batch_size_optim[i].mv = self.optim.mv
+        
+        self.neural_network[:,2] = neural_network_sum[:,2] / count_label
+        self.optim.mv = optim_sum.mv / count_label
+
+    def fit(self,x,y,batch_size,epochs):
+        for i in range(1,epochs,1):
+            self.batch_separate(x,y,len(y),batch_size,i)
+        
+
+
+a1 = Dense(7)
+a2 = Dense(7,'linear',a1)
+a3 = Dense(7,'linear',a2)
+a4 = Dense(1,'sigmoid',a3)
+
+#print(return_network(a4))
+x  = np.array(return_network(a4))
+print(x[1][1][1,:])
+from sys import getsizeof
+print(getsizeof(x))
+print(x.nbytes)
+
+
+
+
 
 
 class NN_one(Optimizer):
@@ -211,8 +372,8 @@ class NN_one(Optimizer):
           #print(self.network_neuron_value[f'layer_{layer_index}'][0,neuron_index])
           #print(self.network_activation_function[f'layer_{layer_index}'])
           #print(activation_function(self.network_activation_function[f'layer_{layer_index}'],sum))
-          self.network_neuron_value[f'layer_{layer_index}'][0,neuron_index] = activation_function(self.network_activation_function[f'layer_{layer_index}'],sum)
-          self.network_neuron_value[f'layer_{layer_index}'][1,neuron_index] = activation_function(f"derivative_{self.network_activation_function[f'layer_{layer_index}']}",sum)
+          self.network_neuron_value[f'layer_{layer_index}'][0,neuron_index] = ActivationFunction(self.network_activation_function[f'layer_{layer_index}'],sum)
+          self.network_neuron_value[f'layer_{layer_index}'][1,neuron_index] = ActivationFunction(f"derivative_{self.network_activation_function[f'layer_{layer_index}']}",sum)
 
     def per_all_at_once(self):
       for layer_index in range(1,self.layer_count+1,1):
@@ -259,7 +420,7 @@ class NN_one(Optimizer):
         return LossFunction('square',self.network_neuron_value[f'layer_{self.layer_count}'][0][0],self.y)
 
 
-
+'''
 a = NN_one(7)
 a.Dense(7,'linear')
 a.Dense(7,'linear')
@@ -275,7 +436,7 @@ print(b[0].y)
 #print(a.network_neuron_value)
 #print(a.network_weight_grad)
 #print(a.network_weight_value['layer_1'][2][3])
-
+'''
 # визначення learning_rate, loss_function
 
 class NN_multiple():
@@ -342,14 +503,9 @@ class NN_multiple():
                                                         batch_size = self.batch_size,
                                                         epoch = i_epoch)
 
-class Model(NN_one,NN_multiple):
-    
-    def __init__(self):
-        pass
-
-model = Model()
 
 
+'''
 a = NN_one(7)
 a.Dense(7,'linear')
 a.Dense(7,'linear')
@@ -396,3 +552,4 @@ for i in range(b):
       y_train[i] = 1
   else:
     y_train[i] = OR(x_train[i][0],x_train[i][1])
+'''
