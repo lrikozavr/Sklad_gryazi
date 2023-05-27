@@ -93,12 +93,12 @@ def interp(mass_x,mass_y,n,extend_c):
     #хитрість 1: додаємо точку з наступного шматку
     for j in range(n+1):
       index = i + j - n//2
-      if(index > 0 and index < len(mass_x)):
+      if(index >= 0 and index < len(mass_x)):
         temp_y.append(mass_y[index])
         temp_x.append(mass_x[index])
         index_temp += 1
     # Create a cubic spline interpolation function
-    f = interp1d(temp_x, temp_y, kind='cubic')
+    f = interp1d(temp_x, temp_y, kind='linear')
     # Generate some points to interpolate at
     x_interp = np.linspace(temp_x[0], temp_x[index_temp-1], extend_c)
     # Evaluate the interpolation function at the new points
