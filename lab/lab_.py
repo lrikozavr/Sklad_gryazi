@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(10, 10))
 def grf():
   #fig, ax = plt.subplots(figsize=(10, 10))
-  xmin, xmax, ymin, ymax = 0, 1100, 0, 1000
+  xmin, xmax, ymin, ymax = 0, 200, 0, 1
   #ticks_frequency = 50  
 
   # Set identical scales for both axes
@@ -43,6 +43,7 @@ def grf():
 
   return ax
 
+path_save_fig = r'C:\Users\lrikozavr\Downloads\teor_dif_lab.png'
 path = 'C:/Users/lrikozavr/Downloads'
 mass = pd.read_excel(f'{path}/lab_data.xlsx')
 #print(mass)
@@ -60,8 +61,20 @@ def tngnt_(x,y,x0):
     tngnt_rev = lambda x: (x - (y0-dydx*x0)) / dydx
     return tngnt, tngnt_rev
 
-tngnt02,tngnt02_rev = tngnt_(mass[name[0]],mass[name[2]],108) #C = 0.2
-tngnt06,tngnt06_rev = tngnt_(mass[name[0]],mass[name[2]],80)  #C = 0.6
+def fond(mass,number,dim):
+    index_mass = []
+    index = 0
+    for i in mass:
+        if(i < number+dim and i > number-dim):
+            index_mass.append(index)
+        index+=1
+    return index_mass
+C_02 = 0.2
+C_06 = 0.6
+err = 0.05
+
+tngnt02,tngnt02_rev = tngnt_(mass[name[0]],mass[name[2]],mass[name[0]][fond(mass[name[2]],C_02,err)[0]]) #C = 0.2
+tngnt06,tngnt06_rev = tngnt_(mass[name[0]],mass[name[2]],mass[name[0]][fond(mass[name[2]],C_06,err)[0]]) #C = 0.6
 
 def x_cut(x,func,func_rev,a,b):
     new_x = []
@@ -137,7 +150,7 @@ from scipy import integrate
 integ_02_b = integrate.simpson(y_02_b,x_02_b)
 integ_06_u = integrate.simpson(y_06_u,x_06_u)
 integ_06_u = abs(y[0]-y[l-1])*abs(x[index]-x[0]) - integ_06_u
-print('S- - S1:',integ_06_u,'\tS+ - S2:',integ_02_b)
+print('S_{0.6} = S- - S1:',integ_06_u,'\tS_{0.2} = S+ - S2:',integ_02_b)
 
 integ_m_1 = integrate.simpson(y[0:index],x[0:index])
 integ_m_1 = abs(y[0]-y[l-1])*abs(x[index]-x[0]) - integ_m_1
@@ -163,5 +176,5 @@ ax.plot(mass[name[0]],mass[name[2]], label = r'$C_{Ni}(x)$')
 ax.plot(x_06,tngnt06(x_06), label = r'$tan(\varphi_{C_{Ni}=0.6})$')
 ax.plot(x_02,tngnt02(x_02), label = r'$tan(\varphi_{C_{Ni}=0.2})$')
 ax.legend()
-fig.savefig(r'C:\Users\lrikozavr\Downloads\teor_dif_lab.png')
+fig.savefig(path_save_fig)
 plt.show()
