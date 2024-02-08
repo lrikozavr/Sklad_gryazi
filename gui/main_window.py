@@ -309,6 +309,19 @@ class MainWindow(QMainWindow):
 
         return result
     
+    def create_image_processing_layout(self):
+        main_layout = QGridLayout()
+
+        
+        
+        self.image_tree_view = QTreeView()
+
+        self.image_view = QWidget()
+        init_widget(self.image_view, "image_view")
+
+        
+
+    
     def left_arrow_button(self):
         pass
 
@@ -454,6 +467,8 @@ class Control(QDialog):
                 self.list.addItem(QListWidgetItem(line))
             except:
                 print()
+
+    #https://doc.qt.io/qtforpython-6/examples/example_external_pandas.html
 
     def save_observ_file(self):
         pass
@@ -679,7 +694,7 @@ class Plan_CU(QDialog):
                 item = QTableWidgetItem(self.mass[i][j])
                 self.table_widget.setItem(i,j,item)
         
-        
+        #https://doc.qt.io/qtforpython-6/examples/example_external_pandas.html
 
     def Start(self):
 
