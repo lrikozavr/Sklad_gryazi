@@ -943,6 +943,23 @@ class SettingsWindow(QDialog):
         self.obs.maxobselev = conf['Observation']['MaxObsElev']
         self.obs.timestep = conf['Observation']['TimeStep']
         
+        import os
+        path = os.path.dirname(os.path.abspath(__file__))
+        index = 0
+        self.sattelite_table.setColumnCount(1)
+        #self.sattelite_table.setRowCount(1)
+        sattelite_list = []
+        #self.sattelite_table.clear()
+        for sat_name in open(f"{path}\\{conf['Path']['List']}"):
+            sattelite_list.append()
+            item = QTableWidgetItem(str(sat_name.split("\n")[0]))
+            self.sattelite_table.setRowCount(index+1)
+            self.sattelite_table.setItem(index, 0, item)
+            print(index, sat_name)
+            index += 1
+        
+        self.sattelite_table.resizeColumnsToContents()
+        
         write_to_log(self.main_window._observation_log,"File *.json with settings upload")
 
         
