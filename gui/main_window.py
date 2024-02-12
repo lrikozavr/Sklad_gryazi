@@ -187,7 +187,10 @@ class MainWindow(QMainWindow):
                       "Icon Mode List")
         '''
         video_layout = self.create_video_layout()
+        image_layout = self.create_image_processing_layout()
         result.addTab(embed_into_hbox_layout(video_layout), "Camera")
+        result.addTab(embed_into_hbox_layout(image_layout), "Image")
+        
         return result
     
     def create_image_layout(self):
@@ -321,9 +324,9 @@ class MainWindow(QMainWindow):
         buttons_layout.addWidget(self.camera_star_check_box, 1)
         buttons_layout.addWidget(self.camera_trajectory_check_box, 1)
         ####################################################################
-        #Log
+        #Log observation
         self._observation_log = QTextBrowser()
-        init_widget(self._observation_log, "observation_error_logTextBrowser")
+        init_widget(self._observation_log, "observation_logTextBrowser")
         
         #Table of observation list
         self.table_list_observations = QTableWidget()
@@ -341,6 +344,7 @@ class MainWindow(QMainWindow):
 
         return result
     
+    #можливо, зробити це все окремим об'єктом?
     def create_image_processing_layout(self):
         main_layout = QGridLayout()
 
@@ -350,6 +354,25 @@ class MainWindow(QMainWindow):
 
         self.image_view = QWidget()
         init_widget(self.image_view, "image_view")
+
+        #Panel on buttons
+        buttons_panel_layout = QGridLayout()
+
+        #log image processing
+        self._image_processing_log = QTextBrowser()
+        init_widget(self._image_processing_log, "image_processing_logTextBrowser")
+
+        #
+        self.probarwidget = ProgressBar("image_processing")
+
+        main_layout.addWidget(self.image_view, 0, 3, 6, 7)
+        main_layout.addWidget(self.probarwidget._progress_bar, 6, 0, 1, 3)
+        main_layout.addLayout(buttons_panel_layout, 0, 0, 7, 3)
+        main_layout.addWidget(self.image_tree_view, 0, 10, 7, 6)
+        main_layout.addWidget(self._image_processing_log, 7, 0, 2, 16)
+
+        return main_layout
+
 
         
 
@@ -433,7 +456,7 @@ class Control(QDialog):
         
         #write_to_log(self.main_window._observation_log,"this shit works")
 
-        self.probarwidget = ProgressBar("plan_cu")
+        self.probarwidget = ProgressBar("control")
 
         menubar = QMenuBar(self)
         fileMenu = menubar.addMenu("&File")
@@ -553,7 +576,7 @@ class Plan_CU(QDialog):
         self.main_layout.addLayout(check_layout,7,0,4,5)
         self.main_layout.addLayout(button_layout,7,5,4,5)
         self.main_layout.addWidget(self.table_widget,0,5,7,5)
-        self.main_layout.addWidget(self.probarwidget._progress_bar,11,0,2,10)
+        self.main_layout.addWidget(self.probarwidget._progress_bar,11,0,2,15)
         
         #фіксуємо розмір вікна
         self.setFixedSize(QSize(600,300))
@@ -764,17 +787,19 @@ class Plan_CU(QDialog):
         #https://doc.qt.io/qtforpython-6/examples/example_external_pandas.html
 
     def Start(self):
-
-        self.edit_text_1.setValue(1)          
         
-        loc = EarthLocation(self.main_window.settings.llh_edittext[1],
-                            self.main_window.settings.llh_edittext[0],
-                            height=self.main_window.settings.llh_edittext[2]*u.m,
+        write_to_log(self.main_window._observation_log,"Plan_CU. Start!")
+        #self.edit_text_1.setValue(1)          
+        llh = self.main_window.settings.llh_edittext.toPlainText().split(",")
+        print(llh)
+        loc = EarthLocation(float(llh[1]),
+                            float(llh[0]),
+                            height=float(llh[2])*u.m,
                             ellipsoid = 'WGS72')
         t = datetime(2023, 11, 29, 12, 0, 0)
 
         write_to_log(self.main_window._observation_log, "Start computing observation period...")
-        eph.getsessiontlim(Time(t, scale='utc').jd, loc, self.MaxSunElev_edittext)
+        eph.getsessiontlim(Time(t, scale='utc').jd, loc, self.MaxSunElev_edittext.value())
 
         msgbx = QMessageBox(self)
         msgbx.setText("Done!")
