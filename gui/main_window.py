@@ -17,8 +17,16 @@ from PySide6.QtWidgets import (QMainWindow, QToolBar, QListWidget, QListWidgetIt
 from PySide6.QtAxContainer import QAxSelect, QAxWidget
 from PySide6.QtCore import Qt, QSize, QFile, QDir, QTextStream, QStringConverter, QTimer, Slot, QDate, QTime
 
-from header import *
+import numpy as np
+#from header import *
 
+import ephemeris_class as eph
+import satellite_class as sat
+from datetime import datetime
+from astropy.time import Time
+
+from astropy import units as u
+from astropy.coordinates import EarthLocation
 from types import SimpleNamespace
 import time
 
@@ -548,7 +556,7 @@ class Plan_CU(QDialog):
         self.main_layout.addWidget(self.probarwidget._progress_bar,11,0,2,10)
         
         #фіксуємо розмір вікна
-        self.setFixedSize(QSize(400,300))
+        self.setFixedSize(QSize(600,300))
 
         self.set_value_from_settings()
 
@@ -709,6 +717,7 @@ class Plan_CU(QDialog):
             self.MinObsElev_edittext = self.main_window.settings.obs.minobselev
             self.MaxObsElev_edittext = self.main_window.settings.obs.maxobselev
             self.TimeStep_edittext = self.main_window.settings.obs.timestep
+            #Add
         except:
             write_to_log(self.main_window._observation_log, "Settings not downloaded from *.json")
 
@@ -717,34 +726,56 @@ class Plan_CU(QDialog):
         #отримуємо посилання на файл з TLE
         self.file_name = open_file(self, "*.tle")
 
-        self.mass = []
+        self.tle_list = []
+        list_line = []
         #читаємо файл та заносимо значення всіх даних до масиву mass
         for line in open(self.file_name):
-            m_line = line.split(" ")
-            self.mass.append(m_line)
-        
-        self.table_widget.setRowCount(len(self.mass[0]))
-        self.table_widget.setColumnCount(len(self.mass))
+            m_line = line.strip("\n").split(" ")
+            if(int(m_line[0]) == 0):
+                list_line.append(m_line[1])
+                continue
+            for index in range(1,len(m_line),1):
+                if(not m_line[index] == ""):
+                    list_line.append(m_line[index])
+            if(int(m_line[0]) == 2):
+                self.tle_list.append(list_line)
+                list_line = []
+
+        self.table_widget.setRowCount(len(self.tle_list))
+        self.table_widget.setColumnCount(len(self.tle_list[0]))
         
         self.table_widget.resizeColumnsToContents()
-        #self.table_widget.setColumnWidth(1,20)
-        #self.probarwidget._max_index_process = self.table_widget.rowCount()
         
         #можна зробити так, щоб воно виводило тільки певну кількість елементів
         for i in range(self.table_widget.rowCount()):
             #self.probarwidget._current_index_process = i + 1
             for j in range(self.table_widget.columnCount()):
-                item = QTableWidgetItem(self.mass[i][j])
-                self.table_widget.setItem(i,j,item)
+                try:
+                    item = QTableWidgetItem(self.tle_list[i][j])
+                    self.table_widget.setItem(i,j,item)
+                except:
+                    itemdntexist_msgb = QMessageBox(self)
+                    itemdntexist_msgb.setText(f"Warning!\nPlan_CU. Item with index {i},{j} do not exist")
+                    itemdntexist_msgb.setWindowTitle("ItemDoNotExist")
+                    itemdntexist_msgb.show()
+                    #time.sleep(10)
+                    write_to_log(self.main_window._observation_log,f"Plan_CU. Item with index {i},{j} do not exist")                
         
         #https://doc.qt.io/qtforpython-6/examples/example_external_pandas.html
 
     def Start(self):
 
         self.edit_text_1.setValue(1)          
-        #отримує посилання на файл обраний через вікно treeview
-        #print(self.getFullPath())
         
+        loc = EarthLocation(self.main_window.settings.llh_edittext[1],
+                            self.main_window.settings.llh_edittext[0],
+                            height=self.main_window.settings.llh_edittext[2]*u.m,
+                            ellipsoid = 'WGS72')
+        t = datetime(2023, 11, 29, 12, 0, 0)
+
+        write_to_log(self.main_window._observation_log, "Start computing observation period...")
+        eph.getsessiontlim(Time(t, scale='utc').jd, loc, self.MaxSunElev_edittext)
+
         msgbx = QMessageBox(self)
         msgbx.setText("Done!")
         msgbx.setWindowTitle("Processing...")
@@ -960,18 +991,55 @@ class SettingsWindow(QDialog):
         
         import os
         path = os.path.dirname(os.path.abspath(__file__))
-        index = 0
-        self.sattelite_table.setColumnCount(1)
-        #self.sattelite_table.setRowCount(1)
-        sattelite_list = []
+        name_list = []
         #self.sattelite_table.clear()
-        for sat_name in open(f"{path}\\{conf['Path']['List']}"):
-            sattelite_list.append()
-            item = QTableWidgetItem(str(sat_name.split("\n")[0]))
-            self.sattelite_table.setRowCount(index+1)
+        for line in open(f"{path}\\{conf['Path']['List']}"):
+            n = line.strip("\n").split(",")
+            #print(n)
+            for i in range(len(n)):
+                try:
+                    int(n[i])
+                except:
+                    continue
+                name_list.append(n[i])
+        
+        name_list.sort(key=lambda x: int(x))
+        
+        mag_list = ["" for i in range(len(name_list))]
+        for line in open(f"{path}\\{conf['Path']['Magnitude']}"):
+            n = line.strip("\n").split(" ")
+            temp = []
+            for i in range(len(n)):
+                if(not n[i] == ""):
+                    temp.append(n[i])
+            try:
+                mag_list[name_list.index(temp[0])] = temp[1]
+            except:
+                continue
+        
+        priority_list = ["" for i in range(len(name_list))]
+        for line in open(f"{path}\\{conf['Path']['Priority']}"):
+            n = line.strip("\n").split(" ")
+            try:
+                priority_list[name_list.index(n[0])] = n[1]
+            except:
+                continue
+
+        self.sattelite_table.setColumnCount(3)
+        self.sattelite_table.setRowCount(len(name_list))
+        self.sattelite_table.setHorizontalHeaderItem(0,QTableWidgetItem("Name"))
+        self.sattelite_table.setHorizontalHeaderItem(1,QTableWidgetItem("Magnitude"))
+        self.sattelite_table.setHorizontalHeaderItem(2,QTableWidgetItem("Priority"))
+
+        #можна замінити на спеціальний клас моделі з Pandas
+        #і кожного разу ініціаізувати саме базу даних, без поступового заведення значень
+        for index in range(self.sattelite_table.rowCount()):
+            item = QTableWidgetItem(str(name_list[index]))
             self.sattelite_table.setItem(index, 0, item)
-            print(index, sat_name)
-            index += 1
+            item = QTableWidgetItem(str(mag_list[index]))
+            self.sattelite_table.setItem(index, 1, item)
+            item = QTableWidgetItem(str(priority_list[index]))
+            self.sattelite_table.setItem(index, 2, item)
         
         self.sattelite_table.resizeColumnsToContents()
         

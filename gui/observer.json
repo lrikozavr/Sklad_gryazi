@@ -1,0 +1,50 @@
+{
+	"Observer": {
+		"Site": "LAO",
+		"Code": "LVIL",
+		"LLH": [49.917573, 23.954415, 359.490000],
+		"XYZ": []
+	},
+	"Observation": {
+		"Type": "LEO",
+		"Time": "UT",
+		"Magnitude": 8.5,
+		"MaxSunElev": -8.0,
+		"MinObsElev": 15.0,
+		"MaxObsElev": 60.0,
+		"TimeStep": 10.0
+	},
+	"Telescope": {
+		"Name": "Meade",
+		"Mount": "A",
+		"Port": {
+			"Name": "COM",
+			"Path": "1A86:7523",
+			"Speed": 19200,
+			"Size": 200
+		}
+	},
+	"Path": {
+		"List": "sat_list.txt",
+		"TLE": "20231129_1331.tle",
+		"Priority": "LEO.pr",
+		"Catalogue": "satcat.tsv",
+		"Magnitude": "apparent.mag",
+		"Horizon": "horiz.on",
+		"Observations": "",
+		"Archive": "*.obs",
+		"Temporary": "./temp/"
+	},
+	"URL": {
+		"TLE": {
+			"site": "",
+			"login": "",
+			"pass": ""
+		},
+		"Magnitude": {
+			"site": "",
+			"login": "",
+			"pass": ""
+		}
+	}
+}
