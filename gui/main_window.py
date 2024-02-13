@@ -579,7 +579,7 @@ class Plan_CU(QDialog):
         self.main_layout.addWidget(self.probarwidget._progress_bar,11,0,2,15)
         
         #фіксуємо розмір вікна
-        self.setFixedSize(QSize(600,300))
+        self.setFixedSize(QSize(400,300))
 
         self.set_value_from_settings()
 
@@ -790,14 +790,14 @@ class Plan_CU(QDialog):
         
         write_to_log(self.main_window._observation_log,"Plan_CU. Start!")
         #self.edit_text_1.setValue(1)          
-        llh = self.main_window.settings.llh_edittext.toPlainText().split(",")
+        llh = self.main_window.settings.llh_edittext.toPlainText().strip("[]").split(",")
         print(llh)
         loc = EarthLocation(float(llh[1]),
                             float(llh[0]),
                             height=float(llh[2])*u.m,
                             ellipsoid = 'WGS72')
         t = datetime(2023, 11, 29, 12, 0, 0)
-
+        
         write_to_log(self.main_window._observation_log, "Start computing observation period...")
         eph.getsessiontlim(Time(t, scale='utc').jd, loc, self.MaxSunElev_edittext.value())
 
