@@ -238,19 +238,72 @@ $$ language plpgsql;
 
 
 
-
-
-
-create or replace overlap(start_date_1 timestamp, end_date_1 timestamp, start_date_2 timestamp, end_date_2 timestamp
-						, out o_min_value timestamp, out o_max_value timestamp) as $$
+create or replace function overlap_interval(start_date_1 timestamp, end_date_1 timestamp, start_date_2 timestamp, end_date_2 timestamp) returns record as $$
 declare
-	overlap_flag boolean := (start_date_1, end_date_1) overlaps (start_date_2, end_date_2);
+	o_min_value timestamp;
+	o_max_value timestamp;
+	result record;
 begin
-	case 
-		when not overlap_flag then o_min_value = 0, o_max_value = 0
+	
+		if start_date_2 between start_date_1 and end_date_1 
+		then o_min_value := start_date_2;
+		else o_min_value := start_date_1;
+		end if;
+		if end_date_2 between start_date_1 and end_date_1 
+		then o_max_value := end_date_2;
+		else o_max_value := end_date_1;
+		end if;
+		
+		select o_min_value, o_max_value into result;		
+		return result;
+end;
+$$ language plpgsql;
+
+create or replace function overlap_interval(start_date_1 timestamp, end_date_1 timestamp, start_date_2 timestamp, end_date_2 timestamp) returns record as $$
+declare
+	o_min_value timestamp;
+	o_max_value timestamp;
+	temp_flag_index_weight integer := 0;
+	harvest_flag integer := 0;
+	temp_record record;
+	i record;
+begin
+	create table temp_index (
+		id 					integer,
+		date 				timestamp without time zone,
+		flag_index 			integer,
+		flag_index_weight 	integer
+		);
+	-- створюємо таблицю і відмічаємо початок і кінець
+	for i in (select *, row_number() over () as id from task12) loop
+		--insert into temp_index values (,'',,)
+		insert into temp_index values (i.id,i.start_date,1,0);
+		insert into temp_index values (i.id,i.end_date,-1,0);
+	end loop;
+	-- рахуємо які саме інтервали нашаровуються
+	for i in (select * from temp_index order by date asc) loop
+		update temp_index
+			set flag_index_weight = i.flag_index + temp_flag_index_weight;
+		temp_flag_index := i.flag_index_weight;
+	end loop;
+	--
+	create table temp_result (
+		id 			integer,
+		date_start 	timestamp without time zone,
+		date_end 	timestamp without time zone,
+		deep 		integer
+	)
+	--
+	for i in (select * from temp_index order by date asc) loop
+			
+		if harvest_flag = 0 then harvest_flag = 1; temp_record = i; continue;
 		else 
-			case
-				when extract(epoch from start_date_1)
-	end
+			if temp_record.flag_index_weight = 0 then temp_record = i; continue;
+			end if;
+		end if;
+			exit when j.flag_index = -1;
+		end loop;
+	end loop;
+		
 end;
 $$ language plpgsql;
