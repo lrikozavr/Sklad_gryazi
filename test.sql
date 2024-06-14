@@ -347,12 +347,7 @@ begin
 end;
 $$ language plpgsql;
 
-create table overlap_interval_table (
-	start_date timestamp without time zone,
-	end_date timestamp without time zone
-);
-
-create or replace function overlap_interval() returns setof bigint as $$
+create or replace function overlap_interval(view_name text) returns setof bigint as $$
 declare
 	temp_flag_index_weight integer := 0;
 	first_record_flag integer := 0;
@@ -369,10 +364,10 @@ begin
 		);
 
 	raise notice 'start table 1';
-
+--
+	execute 'create view temp_input_view as select start_date, end_date, row_number() over () as id from ' || quote_ident(view_name);
 -- створюємо таблицю і відмічаємо початок і кінець
-	for i in (select *, row_number() over () as id from overlap_interval_table
-		) loop
+	for i in (select * from temp_input_view) loop
 		--insert into temp_index values (,'',,)
 		insert into temp_index values (i.id,i.start_date,1);
 		insert into temp_index values (i.id,i.end_date,-1);
@@ -437,11 +432,13 @@ begin
 	return query (select
 		sum(culc_time(fix_time(date_start),fix_time(date_end))/deep) as work_duration from temp_result group by id order by id asc);
 	
+	drop view temp_input_view;
 	drop table temp_result;
 	drop table temp_index;
 	drop table temp_index_weight;
 end;
 $$ language plpgsql;
+
 
 
 create or replace function working_culc() returns void as $$
@@ -451,13 +448,13 @@ declare
 	flag_null integer;
 begin
 	create table working_table (
-	issue_key text,
-	author_key text,
-	status text,
-	start_date timestamp without time zone,
-	end_date timestamp without time zone, 
-	work_duration bigint, 
-	price real
+		issue_key text,
+		author_key text,
+		status text,
+		start_date timestamp without time zone,
+		end_date timestamp without time zone, 
+		work_duration bigint, 
+		price real
 	);
 	
 	for i in (select distinct author_key from task12) loop
