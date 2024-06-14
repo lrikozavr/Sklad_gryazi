@@ -446,11 +446,14 @@ $$ language plpgsql;
 
 create or replace function working_culc() returns void as $$
 declare
-	i text;
+	i record;
+	unique_author_key text;
+	flag_null integer;
 begin
 	create table working_table (
 	issue_key text,
-	author_key text, 
+	author_key text,
+	status text,
 	start_date timestamp without time zone,
 	end_date timestamp without time zone, 
 	work_duration bigint, 
@@ -458,20 +461,29 @@ begin
 	);
 	
 	for i in (select distinct author_key from task12) loop
-		raise notice '%', i;
-		create view temp_author as
+		unique_author_key := i.author_key;
+
+		raise notice '%', unique_author_key;
+
+		if(unique_author_key is null) then continue; end if;
+		-- прибрати null
+		execute	'create view temp_author as
 		select * 
 		from task12
-		where task12.author_key = i and status = 'In Progress';
-
+		where task12.author_key = ''' || unique_author_key || ''' and status = ''In Progress'';';
+	
+		execute 'select count(*) from ' || quote_ident('temp_author') into flag_null;
+		if flag_null = 0 then drop view temp_author; continue;
+		end if;
+		
 		truncate table overlap_interval_table;
 		insert into overlap_interval_table (start_date, end_date)
 		select start_date, end_date
 		from temp_author;
 
-		insert into working_table (issue_key, author_key, start_date, end_date, work_duration, price)
-		select ori.issue_key, ori.author_key, ori.start_date, ori.end_date, ov.work_duration, (case when (ori.author_key like 'JIRAUSER%') then 1 else 2 end)
-		from (select row_number() over () as id, work_duration
+		insert into working_table (issue_key, author_key, status, start_date, end_date, work_duration, price)
+		select ori.issue_key, ori.author_key, ori.status, ori.start_date, ori.end_date, ov.work_duration, (case when (ori.author_key like 'JIRAUSER%') then 1 else 2 end)
+		from (select row_number() over () as id, overlap_interval as work_duration
 				from overlap_interval()) as ov inner join (select row_number() over () as id, * from temp_author) as ori ON ov.id = ori.id;
 		
 		drop view temp_author;
@@ -479,3 +491,9 @@ begin
 
 end;
 $$ language plpgsql;
+
+
+select s.issue_type, sum((w.work_duration/3600.0)*w.price) as total_cost --s.issue_key,count(*)
+from issues as s inner join working_table as w 
+ON s.issue_key = w.issue_key and s.assignee_key like w.author_key
+group by s.issue_type
