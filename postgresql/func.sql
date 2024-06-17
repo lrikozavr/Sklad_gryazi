@@ -94,13 +94,17 @@ declare
 	temp_record_id_array integer;
 	i record;
 begin
+
+	raise notice 'overlap start at --- ', clock_timestamp();
+
 	create temp table temp_index (
 		id 					integer,
 		date 				timestamp without time zone,
 		flag_index 			integer
+		--flag_index_weight 	integer
 		);
 
-	--	cтворює колонку id, щоб після виконання основної програми, повернути список у початкове положення
+--	cтворює колонку id, щоб після виконання основної програми, повернути список у початкове положення
 	execute 'create view temp_input_view as select start_date, end_date, row_number() over () as id from ' || quote_ident(view_name);
 -- створюємо таблицю і відмічаємо початок і кінець
 	for i in (select * from temp_input_view) loop
@@ -118,10 +122,13 @@ begin
 		);
 
 	-- рахуємо які саме інтервали нашаровуються
-	for i in (select * from temp_index order by date asc) loop
+	for i in (select * from temp_index order by date asc, flag_index desc) loop
+		--додай запобіжник, щоб не було значень -1
+		--а він взагалі треба?
 		insert into temp_index_weight values (i.id,i.date,i.flag_index,i.flag_index + temp_flag_index_weight);
 		temp_flag_index_weight := i.flag_index + temp_flag_index_weight;
 	end loop;
+
 	--
 	create temp table temp_result (
 		id 			integer,
@@ -130,7 +137,7 @@ begin
 		deep 		integer
 	);
 	--
-	raise notice 'start of loop %', clock_timestamp();
+
 	for i in (select * from temp_index_weight) loop
 		if first_record_flag = 0 then first_record_flag = 1; temp_record = i; continue;
 		else 
@@ -144,22 +151,29 @@ begin
 			-- перевірка на інтервал з порожнім часом
 			if temp_record.flag_index_weight = 0 then temp_record = i; continue; end if;
 
-			-- для кожного з індексів які перетинаються, додаємо запис з інтервалом
+			--?
 			foreach temp_record_id_array in array record_id_array loop
+				--insert into temp_result values (temp_record_id_array,temp_record.date,i.date,abs(temp_record.flag_index_weight));
 				insert into temp_result values (temp_record_id_array,temp_record.date,i.date,temp_record.flag_index_weight);
 			end loop;
 			
 			temp_record = i;
 		end if;
 
+		--exit when i.flag_index = -1;
+
+--		перевірка наявності значення в масиві
+--		= any (record_id_array);
 	end loop;
 	
-	raise notice 'end of loop %', clock_timestamp();
+	
 	-- вивід підрахунку часу для кожної задачі, за правилом, ділення на загальну кількість перетинання
 	return query (	select sum(culc_time(date_start,date_end,f_p)/deep) as work_duration 
 					from temp_result 
 					group by id 
 					order by id asc);
+	
+	raise notice 'overlap end at --- ', clock_timestamp();
 	
 	drop view temp_input_view;
 	drop table temp_result;
@@ -189,14 +203,13 @@ begin
 		select * 
 		from ' || quote_ident(view_name);
 
-    -- для кожного з авторів
 	for i in (select distinct input_view.author_key from input_view) loop
 		unique_author_key := i.author_key;
 
 		raise notice '%', unique_author_key;
 
 		if(unique_author_key is null) then continue; end if;
-		-- прибираємо значення null
+		-- прибрати null
 		execute	'create view temp_author as
 		select * 
 		from input_view
