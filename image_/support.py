@@ -498,7 +498,7 @@ class PlaneConstant():
     def __init__(self, plane_param: np.ndarray | None = None, mod: str = "simple"):
         """
         plane_param : Параметри пластинки у вигляді [x,y]
-        mod : [simple, or hard] Для більшості випадків, вистачає лише перших 3-х коефіціентів рівнянь Тернера
+        mod : [simple, medium or hard] Для більшості випадків, вистачає лише перших 3-х коефіціентів рівнянь Тернера
         """
         self.mod = mod
         if(plane_param is None):
@@ -523,12 +523,16 @@ class PlaneConstant():
             p=10
             if(self.mod == "simple"):
                 self.function = self.__plane_parameters_1__
-            else:
+            elif(self.mod == "medium"):
+                self.function = self.__plane_parameters_2__
+            else:    
                 self.function = self.__plane_parameters_3__
         else:
             p=15
             if(self.mod == "simple"):
                 self.function = self.__plane_parameters_1__
+            elif(self.mod == "medium"):
+                self.function = self.__plane_parameters_2__
             else:
                 self.function = self.__plane_parameters_4__
         print("Plane constant calculation mod: ", self.mod)
