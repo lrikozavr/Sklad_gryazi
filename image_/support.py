@@ -1,6 +1,6 @@
 import numpy as np
 
-def matrix(angle,axes,round=12):
+def matrix(angle,axes,round=15):
     """
     Output rotation matrix that rotate vectors by an angle about the x-, y-, or z-axis, in three dimensions, using the right-hand rule
 
@@ -36,7 +36,7 @@ def matrix(angle,axes,round=12):
                          [np.sin(angle),np.cos(angle),0],
                          [0,0,1]]).round(round)
 
-def horizontal_to_equatorial(A, h, fi, round = 12):
+def horizontal_to_equatorial(A, h, fi, round = 15):
     """
     These function are for converting `horizontal coordinates` to `equatorial coordinates`
 
@@ -78,7 +78,7 @@ def horizontal_to_equatorial(A, h, fi, round = 12):
 
     return np.round([hour, delta],round)
 
-def equatorial_to_horizontal(hour, delta, fi, round = 12):
+def equatorial_to_horizontal(hour, delta, fi, round = 15):
     """
     These function are for converting `equatorial coordinates` to `horizontal coordinates`
 
@@ -119,7 +119,7 @@ def equatorial_to_horizontal(hour, delta, fi, round = 12):
     
     return np.round([A, h],round)
 
-def cartesian_to_spherical(x, y, z, round = 12):
+def cartesian_to_spherical(x, y, z, round = 15):
     """
     These function are for converting `cartesian coordinates` to `spherical coordinates`
     
@@ -146,7 +146,7 @@ def cartesian_to_spherical(x, y, z, round = 12):
 
     return np.round([r, tetha, fi], round)
 
-def spherical_to_cartesian(r, fi, tetha, round = 12):
+def spherical_to_cartesian(r, fi, tetha, round = 15):
     """
     These function are for converting `spherical coordinates` to `cartesian coordinates`
     
@@ -206,7 +206,7 @@ def plane_to_cartesian(X,Y,naxis=(576, 768),fov=np.deg2rad((3,4)),orientation=(1
 
     """
 
-    koef_fov = [2*np.sin(fov[0]/2.),2*np.sin(fov[1]/2.)]
+    koef_fov = [2*np.tan(fov[0]/2.),2*np.tan(fov[1]/2.)]
 
     step = lambda x,i: (x - naxis[i]/2.)*orientation[i]*(koef_fov[i]/naxis[i])
 
@@ -215,7 +215,7 @@ def plane_to_cartesian(X,Y,naxis=(576, 768),fov=np.deg2rad((3,4)),orientation=(1
 
     z = np.sqrt(1 - np.pow(x,2) - np.pow(y,2))
 
-    return x, y, z
+    return np.array([x, y, z])
 
 def cartesian_to_plane(x,y,naxis=(512, 768),fov=np.deg2rad((3,4)),orientation=(1,1)):
     """
@@ -245,14 +245,14 @@ def cartesian_to_plane(x,y,naxis=(512, 768),fov=np.deg2rad((3,4)),orientation=(1
     (np.float64(500.0), np.float64(700.0))
 
     """
-    koef_fov = [2*np.sin(fov[0]/2.),2*np.sin(fov[1]/2.)]
+    koef_fov = [2*np.tan(fov[0]/2.),2*np.tan(fov[1]/2.)]
 
     step = lambda x,i: x*(naxis[i]/koef_fov[i])*orientation[i] + naxis[i]/2.
 
     X = step(x,0)
     Y = step(y,1)
 
-    return X, Y
+    return np.array([X, Y])
 
 def hour_ra_(angle, siderial_time, local_longitude = 0):
     """
@@ -274,172 +274,489 @@ def hour_ra_(angle, siderial_time, local_longitude = 0):
 
     """
     result = siderial_time + local_longitude - angle 
+    if(isinstance(result,np.ndarray)):
+        return np.where(result < 0, result + np.pi*2, result)
     if(result < 0):
         result += np.pi*2
     return result
 
+######################################################################################
+
+def stat(xy):
+    mean, median, std = sigma_clipped_stats(xy)
+    print("mean:\t", mean)
+    print("median:\t", median)
+    print("std:\t", std)
+    return mean, median, std
 
 ######################################################################################
 
-# Функція яка обраховує зсув
-# Перше значення, це відстань
-# Друге значення, це варіація тангенсу кута у полярній системі координат
-shift = lambda xy_1, xy_2: [np.hypot(xy_1[0] - xy_2[0], xy_1[1] - xy_2[1]),np.arctan2((xy_1[0] - xy_2[0]),(xy_1[1] - xy_2[1]))]
-
-#  
-def step(ra: np.ndarray, array_ra: np.ndarray,accuracy: list,aperture: list):
-    """
-    Функція яка виводить індекси рядків масиву, які задовільняють умовам вікна ототожнення
-
-    Input
-    -----
-    ra : [radius, angle]
-    array_ra : array of [radius, angle]
-    accuracy : percent shift of [radius, angle] as radius of searching window
-    aperture : solid shift of [radius, angle] of searching window
-
-    Output
-    ------
-    1D array of index 
-    """
-    bool_temp = ((array_ra[:,0] < ra[0]*(1+accuracy[0]) + aperture[0]) & (array_ra[:,0] > ra[0]*(1-accuracy[0]) - aperture[0])) & ((array_ra[:,1] < ra[1]*(1+accuracy[1]) + aperture[1]) & (array_ra[:,1] > ra[1]*(1-accuracy[1]) - aperture[1]))
-    if(bool_temp.any()):
-        return np.argwhere(bool_temp == True).flatten()
-    else:
-        return -1
-
-def cycle(ra,pair,i,j,N,gap_value,acc,ap):
-    """
-    Рекурсивна функція пошуку відповідників
-
-    Input
-    -----
-    ra : [radius, angle]
-    pair : 3D array like (index of base array, index of sub array,[radius, angle])
-    i : index of base array
-    j : array of used index of xub array
-    N : number of unit (of base array), that must have oponent
-    gap_value : number of unit (of base array) that may not have oponent
-    acc : (accuracy) percent of [radius, angle] as radius of searching window
-    ap : (aperture) solid [radius, angle] of searching window
-
-    Output
-    ------
-    if not have oponent => -1
-
-    else                => [index of oponents] 
-    """
+class ShiftFinder():
     
-    index = step(ra,pair[i],acc,ap)
+    def array_to_shift(self,xy_1,xy_2):
+        # Функція яка обраховує зсув
+        # Перше значення, це відстань
+        # Друге значення, це варіація тангенсу кута у полярній системі координат
+        return np.array([np.hypot(xy_1[:,0] - xy_2[:,0], xy_1[:,1] - xy_2[:,1]),
+                        np.arctan2((xy_1[:,0] - xy_2[:,0]),(xy_1[:,1] - xy_2[:,1]))]).transpose()
+
+    def __init__(self,xy_1: np.ndarray, xy_2: np.ndarray, N: int | None = None, gap_value: int = 1, accuracy: list = [0,0], aperture: list = [3,np.deg2rad(3)]):
+        #
+        self.xy_1 = xy_1
+        self.xy_2 = xy_2
+        #
+        if(N is None):
+            N = xy_1.shape[0]
+        #
+        if(N > xy_1.shape[0]):
+            raise Exception("Number of unit (of base array), that must have oponent out of base array size\n Please decrease value of parameter N")
+        #
+        self.gap_value = gap_value
+        self.accuracy = accuracy
+        self.aperture = aperture
+        #
+        self.main_shift_array = np.zeros((N,xy_2.shape[0],2))
+        #
+        for i in range(0,N,1):
+            self.main_shift_array[i,:] = self.array_to_shift(xy_1[i:i+1:1],xy_2)
+
+    def operation_on_shift(self, main_shift: np.ndarray, array_of_shifts: np.ndarray, evaluate: str = "hypot", option: str = "min"):
+        """
+        Виводить індекс найближчого значення вектору зсуву з масиву відповідників
     
-    #якщо не вдалося знайти відповідник(-и) виводимо -1
-    if(not isinstance(index,np.ndarray)):
-        #Другий шанс
-        if((not i >= N-1) and (i - len(j) < gap_value)):
-            temp = cycle(ra,pair,i+1,j,N,gap_value,acc,ap)
-            if(isinstance(temp,np.ndarray)):
-                return np.append([-1],temp)
-                    
-        return -1
+        Input
+        -----
+        main_shift : [radius, angle]
+        array_of_shifts : array of [radius, angle]
+        evaluate : {"hypot","sum","radius","angle"}
+        option : {"min","sort"}
+        
+        Output
+        ------
+            Index
+        """
 
-    # якщо відповідники знайшлися, 
-    # але наступне коло виходить 
-    # за межі кількості відповідників N
-    # виводимо перший елемент
-    if(i == N-1):
-        #print(index)
-        for i_i in index:
-            if(not i_i in j):
-                return np.array(i_i)
-        return -1
-
-    indx = []
-    idx = -1
-    for i_i in index:
-        # якщо виникає повтор то переходимо до наступного індексу
-        if(i_i in j):
-            continue
-        # додаємо індекс до переліку вже використаних індексів
-        j_j = [i_i]
-        j_j.extend(j)
-        # j_j можна вважати набором індексів (це на потім)
-        #print(j_j)
-        # 1
-        # якщо індексів ототожнених рядків на цьому колі більше ніж 1
-        # і ми маємо можливість запустити позанаступне коло
-        # то ви запускаємо коло i + 1
-        if(isinstance(indx,np.ndarray) and not i >= N-2):
-            j_j.extend(indx)
-            temp = cycle(ra,pair,i+2,j_j,N,gap_value,acc,ap)
-            #мом
-            if(not isinstance(temp,np.ndarray)):
-                return -1
-            indx = np.append(indx,temp)
-            idx = i_i
-            break
-        # запускає пошук відповідників на наступне коло 
-        # збільшуючи і на 1
-        indx = cycle(ra,pair,i+1,j_j,N,gap_value,acc,ap)
-        # якщо невдалося знайти відповідник
-        if(not isinstance(indx,np.ndarray)):
-            # 1
-            # пробуємо перевірити гіпотезу, 
-            # що на наступному колі є відповідник 
-            # під індексом який ми вже зайняли на цьому колі 
-            indx = step(ra,np.array([pair[i+1][i_i]]),acc,ap)
-            if(not isinstance(indx,np.ndarray)):
-                return -1
-            #continue
-            # 1
-            # якщо нам вдається, то ми кладемо в indx значення індексу цього рядку
-            else:
-                indx = np.array([i_i])
+        temp_shift = abs(array_of_shifts - main_shift)
+        first_step = np.array([])
+        if(evaluate == "hypot"):
+            first_step = np.hypot(temp_shift[:,0],temp_shift[:,1])
+        elif(evaluate == "sum"):
+            first_step = np.sum(temp_shift,axis=1)
+        elif(evaluate == "radius"):
+            first_step = temp_shift[:,0]
+        elif(evaluate == "angle"):
+            first_step = temp_shift[:,1]
         else:
-            idx = i_i
-            break
+            raise Exception("Wrong [evaluate] parameter value, check descrintion for more info")
+        #print("first step", first_step)
 
-    if(idx == -1):
-        return -1
+        second_step = np.array([])
+        if(option == "min"):
+            second_step = np.array([np.argmin(first_step)])
+        elif(option == "sort"):
+            second_step = np.argsort(first_step)[::-1]
+        else:
+            raise Exception("Wrong [option] parameter value, check description for more info")
 
-    return np.append([idx],indx)
+        return second_step
 
-def one(xy_1,xy_2, N, gap_value = 0, accuracy = [0.1,0.1], aperture=[0,0]):
-    """
-    Алгоритм пошуку відповідників за лінійного значення зсуву
+    def check_window(self, shift: np.ndarray, array_shift: np.ndarray, accuracy: list | None = None, aperture: list | None = None):
+        """
+        Функція яка виводить індекси рядків масиву, які задовільняють умовам вікна ототожнення
 
-    Input
-    -----
-    xy_1 : base coordinate array
-    xy_2 :  sub coordinate array
-    N : number of unit (of base array), that must have oponent
-    gap_value : number of unit (of base array) that may not have oponent
-    acc : (accuracy) percent of [radius, angle] as radius of searching window
-    ap : (aperture) solid [radius, angle] of searching window
+        Input
+        -----
+        shift : [radius, angle]
+        array_shift : array of [radius, angle]
+        accuracy : percent shift of [radius, angle] as radius of searching window
+        aperture : solid shift of [radius, angle] of searching window
 
-    Output
-    ------
-       idx - np.array() of index from sub array
-    """
-    n = len(xy_2)
+        Output
+        ------
+        1D array of index 
+        """
+
+        if(accuracy is None):
+            accuracy = self.accuracy
+        if(aperture is None):
+            aperture = self.aperture
+
+        bool_temp = ((array_shift[:,0] < shift[0]*(1+accuracy[0]) + aperture[0]) & (array_shift[:,0] > shift[0]*(1-accuracy[0]) - aperture[0])) & ((array_shift[:,1] < shift[1]*(1+accuracy[1]) + aperture[1]) & (array_shift[:,1] > shift[1]*(1-accuracy[1]) - aperture[1]))
+        if(bool_temp.any()):
+            #return np.argwhere(bool_temp == True).flatten()
+            # Масив індексів, значень які відповідають критеріям
+            temp_array = np.argwhere(bool_temp == True).flatten()
+            # Якщо один елемент у масиві, то виводимо значення одразу
+            if(temp_array.shape[0] == 1):
+                return temp_array 
+            # Виводить відсортований по відстані масив індексів масиву індексів
+            temp_index_array = self.operation_on_shift(shift,array_shift[temp_array],
+                                           evaluate="sum",
+                                           option="sort")
+
+            return temp_array[temp_index_array]
+            #return 
+            
+        else:
+            return -1
+
+    def one_by_one(self, step: int = 3, N: int | None = None, accuracy: list | None = None, aperture: list | None = None):
+        """
+        Алгоритм знаходження відповідників
+
+        Input
+        -----
+        step : count of first failure loop
+
+        Output
+        ------
+        np.ndarray indexes of oponent from sub array
+        
+        """
+        if(N is None):
+            N = self.main_shift_array.shape[0]
+        elif(N > self.main_shift_array.shape[0]):
+            raise Exception("Number of unit (of base array), that must have oponent out of base array size\n Please decrease value of parameter N")
+
+        if(step > self.main_shift_array.shape[0]):
+            raise Exception("Step value out of range")
+
+        for i in range(0,step,1):
+            for j in range(0,self.main_shift_array.shape[1],1):
+                # Створюємо масив індексів, який повністю складається з -1, 
+                # щоб надалі туди додавати лише значення індексів відповідників
+                idx = np.full(N,fill_value = -1)
+                # Додаємо значення індекса початкової відстані, 
+                # яку використовуємо для порівняння з іншими
+                # до масиву індексів, який виводимо
+                idx[i] = j
+                # та до масиву індексів, який робимо для збереження повторів
+                index_array = np.array([j])
+                # Флаг знаходження відповідників
+                idx_flag = 1
+                for deep in range(0,N,1):
+                    # Пропускаємо коло, яке відповідає вже обраному індексу
+                    if (deep == i):
+                        continue
+                    # Виводить індекси елементів іншого масиву, які відповідають умовам
+                    index = self.check_window(self.main_shift_array[i,j],self.main_shift_array[deep],accuracy,aperture)
+                    # Умова за якої можливий другий шанс
+                    second_chanse_flag = (((deep > i) and (deep - index_array.shape[0] < self.gap_value)) or ((deep < i) and (deep - index_array.shape[0] + 1 < self.gap_value)))
+                    # якщо не вдалося знайти відповідник(-и) виводимо -1
+                    if(not isinstance(index,np.ndarray)):
+                        #Другий шанс
+                        if(second_chanse_flag):
+                            continue
+                        else:
+                            idx_flag = -1
+                            break
+
+                    # Перевіряємо, чи не повторюються індекси
+                    repeat_flag = -1
+                    for i_i in index:
+                        if(not i_i in index_array):
+                            repeat_flag = 1
+                            index_array = np.append(index_array,i_i)
+                            idx[deep] = i_i
+                            break
+                    # Якщо повторюються і можливість другого шансу відсутня, то переходимо на наступне коло
+                    if(repeat_flag == -1 and (not second_chanse_flag)):
+                        idx_flag = -1
+                        break
+                
+                if(idx_flag == 1):
+                    return idx
+        
+        raise Exception("Something go wrong, increase accuracy")
+
+    def shift_statistic(self,index_array: np.ndarray):
+        """
+        Виводить значення зсуву і середнє квадратичне відхилення
+
+        Input
+        -----
+        index_array : array of index from self.one_by_one()
+
+        Output
+        ------
+        mean, std
+        """
+        # Визначаємо елементи які мають відповідники
+        xy_index = np.argwhere(index_array >= 0).flatten()
+        #
+        print("Count of stars with oponent: ",xy_index.shape[0])
+        # 
+        shift_temp = self.xy_1[xy_index] - self.xy_2[index_array[xy_index]]
+        X_mean, X_median, X_std = sigma_clipped_stats(shift_temp[:,0])
+        Y_mean, Y_median, Y_std = sigma_clipped_stats(shift_temp[:,1])
+        
+        return np.array([X_mean,Y_mean]),np.array([X_median, Y_median]),np.array([X_std, Y_std])
+
+#
+class PlaneConstant():
     
-    # розраховуємо відстані одразу для N перших точок точок базового масиву
-    pair = np.zeros((N,n,2))
-    for i in range(0,N,1):
-        for j in range(0,n,1):
-            pair[i,j] = shift(xy_1[i],xy_2[j])
+    def __init__(self, plane_param: np.ndarray | None = None, mod: str = "simple"):
+        """
+        plane_param : Параметри пластинки у вигляді [x,y]
+        mod : [simple, or hard] Для більшості випадків, вистачає лише перших 3-х коефіціентів рівнянь Тернера
+        """
+        self.mod = mod
+        if(plane_param is None):
+            return None
+        self.plane_param = plane_param
+        print(f"{self.check(plane_param.shape[1])} parameters plane calibration")
+        
+    def check(self, length: int):
+        p = 0
+        if(length < 3):
+            raise Exception("RIP. Should have at least 3 parameters or base coordinates")
+        elif(length < 6):
+            p = 3
+            self.function = self.__plane_parameters_1__
+        elif(length < 10):
+            p=6
+            if(self.mod == "simple"):
+                self.function = self.__plane_parameters_1__
+            else:
+                self.function = self.__plane_parameters_2__
+        elif(length < 15):
+            p=10
+            if(self.mod == "simple"):
+                self.function = self.__plane_parameters_1__
+            else:
+                self.function = self.__plane_parameters_3__
+        else:
+            p=15
+            if(self.mod == "simple"):
+                self.function = self.__plane_parameters_1__
+            else:
+                self.function = self.__plane_parameters_4__
+        print("Plane constant calculation mod: ", self.mod)
+        return p
+
+    def __plane_parameters_1__(self,x,y):
+        return np.array([x, y, np.ones(len(x))]).transpose()
     
-    # запускаємо рекурсію відштовхуючись від значення відстані для першої точки
-    idx = []
-    for j in range(0,n,1):    
-        # point 2
-        temp_idx = cycle(pair[0,j],pair,1,[j],N,gap_value,accuracy,aperture)
-        # у випадку невдалого пошуку, беремо наступне значення відстані
-        if (not isinstance(temp_idx,np.ndarray)):
-            continue
-        idx = np.append([np.int64(j)],temp_idx)
-        break
-    # якщо алгоритм так і не знайшов відповідників, то пишемо
-    if(not isinstance(idx,np.ndarray)):
-        print("Something go wrong. Increse accuracy")
-    # і виводимо -1
-    return idx
+    def __plane_parameters_2__(self,x,y):
+        return np.array([x, y, np.ones(len(x)), 
+                         np.pow(x,2), x*y, np.pow(y,2)]).transpose()
+    
+    def __plane_parameters_3__(self,x,y):
+        return np.array([x, y, np.ones(len(x)), 
+                         np.pow(x,2), x*y, np.pow(y,2), 
+                         np.pow(x,3), np.pow(x,2)*y, x*np.pow(y,2), np.pow(y,3)]).transpose()
+
+    def __plane_parameters_4__(self,x,y):
+        return np.array([x, y, np.ones(len(x)), 
+                         np.pow(x,2), x*y, np.pow(y,2), 
+                         np.pow(x,3), np.pow(x,2)*y, x*np.pow(y,2), np.pow(y,3),
+                         np.pow(x,4), np.pow(x,3)*y, np.pow(x,2)*np.pow(y,2), x*np.pow(y,3), np.pow(y,4)]).transpose()
+
+    def plane_parameters(self, xy_1: np.ndarray, xy_2: np.ndarray):
+        #
+        print(f"{self.check(xy_1.shape[0])} parameters plane calibration")
+        # xy_1 - coordinate from plane
+        temp = xy_2 - xy_1
+
+        Q = self.function(xy_1[:,0],xy_1[:,1])
+        #print(Q)
+        temp_plane = np.linalg.inv(Q.transpose() @ Q) @ Q.transpose()
+
+        X_param = temp_plane @ temp[:,0]
+        Y_param = temp_plane @ temp[:,1]
+        
+        self.plane_param =  np.array([X_param,Y_param])
+    
+    def real_coordinate(self, xy_1: np.ndarray):
+        xy = np.zeros(xy_1.shape)
+        
+        if(hasattr(self,'function')):
+            Q = self.function(xy_1[:,0],xy_1[:,1])
+        else:
+            raise Exception("""Function don't know about plane parameters set, please: 
+initiate class with 'plane_param', or use one of this function first:
+'check', 'plane_parameters'  """)    
+        
+        if(not hasattr(self,'plane_param')):
+            raise Exception("""Function don't know about 'plane_param', please:
+initiate class with 'plane_param', or use 'plane_parameters' first""")
+
+        xy[:,0] = xy_1[:,0] + Q @ self.plane_param[0,:]
+        xy[:,1] = xy_1[:,1] + Q @ self.plane_param[1,:]
+        
+        return xy
+
+from astropy.coordinates import SkyCoord, Angle, EarthLocation, AltAz, HADec
+from astropy.stats import sigma_clipped_stats
+from astropy.time import Time
+import astropy.units as u
+from astropy.io import fits
+
+from photutils.detection import DAOStarFinder
+from photutils.psf import PSFPhotometry
+from photutils.psf import CircularGaussianPRF 
+
+from astroquery.vizier import Vizier
+
+class PlateRecognize():
+
+    def __init__(self, fits: fits, config: dict):
+        self.config = config
+        #
+        self.data = fits[0].data
+        self.header = fits[0].header
+        #
+        #self.center = SimpleNamespace()
+        self.center = SkyCoord(f'{self.header["RA"]} {self.header["DEC"]}', 
+                 unit=("hourangle","deg"), 
+                 frame="icrs")
+                 #obstime=f'{self.header["DATE-OBS"]}T{self.header["TIME-OBS"]}')
+        # another way
+        #self.observation_time.sidereal_time('apparent').radian
+        self.local_sidereal_time = Angle(f'{self.header["TIME-SID"]} hours').to_value(u.rad)
+        #
+        self.location = EarthLocation(lon = config["location"]["lon"] * u.deg,lat = config["location"]["lat"] * u.deg, height = config["location"]["height"] * u.m)
+        self.observation_time = Time(f'{self.header["DATE-OBS"]}T{self.header["TIME-OBS"]}', location=self.location)
+        #
+        self.rotation_matrix = self.rotation_matrix_func()
+        #        
+        self.stars = self.query_stars_coordinate(self.center,fov=config["FOV"], scale=config["scale"])
+        self.plane_objects = self.detect_stars()       
+    
+    def rotation_matrix_func(self):        
+        hour_angle = hour_ra_(self.center.ra.radian,self.local_sidereal_time)
+        azimuth, altitude = equatorial_to_horizontal(hour_angle,self.center.dec.radian,np.deg2rad(self.config["location"]["lat"]))
+        return matrix(-(np.pi/2.-altitude),"y") @ (
+                            matrix(-azimuth,"z") @ matrix(-(np.pi/2.-np.deg2rad(self.config["location"]["lat"])),"y"))
+        
+    def rotation_matrix_alt(self):
+        frame = AltAz(obstime=self.observation_time, location=self.location)
+        altaz = self.center.transform_to(frame)
+        return matrix(-(np.pi/2.-altaz.alt.radian),"y") @ (
+                            matrix(-altaz.az.radian,"z") @ matrix(-(np.pi/2.-np.deg2rad(self.config["location"]["lat"])),"y"))
+
+    def RADEC_to_PlaneXY(self,radec):
+        # Перехід зі сферичної до декартової системи координат з множенням на матрицю повороту
+        xyz = (self.rotation_matrix @ spherical_to_cartesian(1,hour_ra_(radec[:,0],self.local_sidereal_time),np.pi/2. - radec[:,1])).transpose()
+
+        # Перехід від декартової сист. коорд. до координат площини кадру
+        XY = cartesian_to_plane(xyz[:,0],xyz[:,1],naxis = (self.header["NAXIS1"],self.header["NAXIS2"]), fov=np.deg2rad(self.config["FOV"]))
+        #
+        return XY
+
+    def PlaneXY_to_RADEC(self,XY):
+        #
+        xyz = (self.rotation_matrix.transpose() @ plane_to_cartesian(XY[:,0],XY[:,1],naxis = (self.header["NAXIS1"],self.header["NAXIS2"]),fov=np.deg2rad(self.config["FOV"]))).transpose()
+        #
+        temp = cartesian_to_spherical(xyz[:,0],xyz[:,1],xyz[:,2]).transpose()
+        #
+        RADEC = np.zeros((temp.shape[0],2))
+        RADEC[:,1] = np.pi/2. - temp[:,1]
+        RADEC[:,0] = hour_ra_(temp[:,2],self.local_sidereal_time)
+        #
+        return RADEC
+
+    def query_stars_coordinate(self, center: SkyCoord, fov: tuple = (3.20264288, 4.27019051), 
+                                catalog: str = "I/350/tyc2tdsc", mag: float = 8.5, scale: float = 2.):
+        #Кидаємо запит до Vizier, щоб витягнути зірки з каталогу Tycho2, які мають яскравість менше 6 mag
+        TYCHO2 = Vizier(catalog=catalog)
+        # Критерій який скидує ліміт на кількість зірок 
+        TYCHO2.ROW_LIMIT = -1
+        # 
+        result = TYCHO2.query_region(coordinates=center,
+                                width=fov[1]*scale*u.deg,height=fov[0]*scale*u.deg,
+                                column_filters={'BTmag': f'<{mag}'})
+
+        return np.deg2rad(np.sort(result[0],order="BTmag")[["RAT","DET"]].tolist())
+
+    def detect_stars(self, fwhm: float = 7.):
+        # Get statistics
+        #img = (img-np.min(img)).astype(np.uint16)
+        mean, median, std = sigma_clipped_stats(self.data, sigma=3)
+        #threshold = mean + (3. * std)
+        threshold = std*6
+
+        # Detect sources
+        # https://photutils.readthedocs.io/en/2.0.0/user_guide/psf.html
+        # maybe should pay attention to http://www.aspylib.com/
+        FWHM = fwhm
+        R = int(FWHM*4) // 2 + 1
+
+        psf_model = CircularGaussianPRF(flux=mean*3, fwhm=FWHM)
+        fit_shape = (R, R)
+        finder = DAOStarFinder(threshold, FWHM)
+        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                                aperture_radius=R)
+        phot = psfphot(self.data)
+        #Сортуємо по значенню яскравості
+        phot = np.sort(phot, order = "flux_fit")[::-1]
+
+        xy = [[rec['x_fit'], rec['y_fit']] for rec in phot if rec["flags"] == 0]
+
+        return np.array(xy)
+    
+    def calibration(self, mod: int = 6, aperture: list = [2,np.deg2rad(2)]):
+        """
+        mod -- кількість опорних зірок; мінімальна кількість 3.
+        """
+        if(mod < 3):
+            raise Exception("Value of 'mod' is too small for calibration. Check description")
+
+        xy_2 = self.RADEC_to_PlaneXY(self.stars).transpose()
+        xy_1 = self.plane_objects
+
+        shift = ShiftFinder(xy_1,xy_2,N = xy_1.shape[0], gap_value = xy_1.shape[0] - mod, aperture=aperture)
+        # Треба універсалізувати
+        for i in range(mod - 1):
+            if(i==mod - 2):
+                raise Exception("Calibration failed") 
+            try:
+                self.plane_objects_index_array_of_stars = shift.one_by_one(xy_1.shape[0])
+                break
+            except:
+                shift.gap_value += 1
+                continue
+
+        mean_shift, median_shift, std_shift = shift.shift_statistic(self.plane_objects_index_array_of_stars)
+
+        real_XY_center = np.array([self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]) - mean_shift
+
+        new_center = self.PlaneXY_to_RADEC(np.array([real_XY_center]))
+        #print(new_center)
+        #print(new_center[:,0][0])
+        new_center = SkyCoord(new_center[:,0][0], new_center[:,1][0], 
+                 unit=(u.rad,u.rad), 
+                 frame="icrs")
+        #
+        print("Agulare distance ", self.center.separation(new_center))
+        print("Plane distance:")
+        print("mean:\t", mean_shift)
+        print("median:\t", median_shift)
+        print("std:\t", std_shift)
+
+        self.center = new_center
+        self.rotation_matrix = self.rotation_matrix_func()
+
+    def plane_constant(self):
+        index_array = np.argwhere(self.plane_objects_index_array_of_stars >= 0).flatten()
+        xy = self.plane_objects[index_array]
+        real_xy = self.RADEC_to_PlaneXY(self.stars).transpose()[self.plane_objects_index_array_of_stars[index_array]]
+        
+        self.plane_constants = PlaneConstant()
+        self.plane_constants.plane_parameters(xy,real_xy)
+                
+        print("Plane constants precision")
+        stat(self.plane_constants.real_coordinate(xy) - real_xy)
+        print("RADEC precision in angular seconds")
+        stat(np.rad2deg(self.PlaneXY_to_RADEC(self.plane_constants.real_coordinate(xy)) - self.PlaneXY_to_RADEC(real_xy))*3600)
+
+    def real_coordinate(self, xy_1: np.ndarray):
+        
+        if(hasattr(self,'plane_constants')):
+            return self.PlaneXY_to_RADEC(self.plane_constants.real_coordinate(xy_1))
+        else:
+            raise Exception("""Function don't know about 'plane_constants', please:
+use function 'plane_constant' first""")
+
+
+
