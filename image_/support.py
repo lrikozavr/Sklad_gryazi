@@ -354,7 +354,7 @@ class ShiftFinder():
         if(option == "min"):
             second_step = np.array([np.argmin(first_step)])
         elif(option == "sort"):
-            second_step = np.argsort(first_step)[::-1]
+            second_step = np.argsort(first_step)
         else:
             raise Exception("Wrong [option] parameter value, check description for more info")
 
@@ -380,8 +380,8 @@ class ShiftFinder():
             accuracy = self.accuracy
         if(aperture is None):
             aperture = self.aperture
-
-        bool_temp = ((array_shift[:,0] < shift[0]*(1+accuracy[0]) + aperture[0]) & (array_shift[:,0] > shift[0]*(1-accuracy[0]) - aperture[0])) & ((array_shift[:,1] < shift[1]*(1+accuracy[1]) + aperture[1]) & (array_shift[:,1] > shift[1]*(1-accuracy[1]) - aperture[1]))
+        # ця умова не стабільна: (abs(array_shift[:,0]) < aperture[0])
+        bool_temp = (abs(array_shift[:,0]) < aperture[0]) | ((array_shift[:,0] < shift[0]*(1+accuracy[0]) + aperture[0]) & (array_shift[:,0] > shift[0]*(1-accuracy[0]) - aperture[0])) & ((array_shift[:,1] < shift[1]*(1+accuracy[1]) + aperture[1]) & (array_shift[:,1] > shift[1]*(1-accuracy[1]) - aperture[1]))
         if(bool_temp.any()):
             #return np.argwhere(bool_temp == True).flatten()
             # Масив індексів, значень які відповідають критеріям
@@ -391,7 +391,7 @@ class ShiftFinder():
                 return temp_array 
             # Виводить відсортований по відстані масив індексів масиву індексів
             temp_index_array = self.operation_on_shift(shift,array_shift[temp_array],
-                                           evaluate="sum",
+                                           evaluate="radius",
                                            option="sort")
 
             return temp_array[temp_index_array]
@@ -465,6 +465,19 @@ class ShiftFinder():
                         break
                 
                 if(idx_flag == 1):
+                    # Блок, який викидує значення які за межами середнього.
+                    # Нестабільний, бо якщо попадається хоч один елемент з різницею менше за точність (випадково)
+                    # то вилітають всі елементи, які мають відстань більше за точність
+                    ####################################################
+                    none_zero_index = np.argwhere(idx >= 0).flatten()
+                    # Можливо, це включення може врятувати ситуацію
+                    mean, _, __ = sigma_clipped_stats(self.main_shift_array[none_zero_index,idx[none_zero_index]],axis=0)
+                    index = self.check_window(mean, self.main_shift_array[none_zero_index,idx[none_zero_index]],accuracy,aperture)
+                    for i_i in range(none_zero_index.shape[0]):
+                        if(not i_i in index):
+                            idx[none_zero_index[i_i]] = -1
+                    ####################################################
+                
                     return idx
         
         raise Exception("Something go wrong, increase accuracy")
@@ -487,10 +500,8 @@ class ShiftFinder():
         print("Count of stars with oponent: ",xy_index.shape[0])
         # 
         shift_temp = self.xy_1[xy_index] - self.xy_2[index_array[xy_index]]
-        X_mean, X_median, X_std = sigma_clipped_stats(shift_temp[:,0])
-        Y_mean, Y_median, Y_std = sigma_clipped_stats(shift_temp[:,1])
         
-        return np.array([X_mean,Y_mean]),np.array([X_median, Y_median]),np.array([X_std, Y_std])
+        return sigma_clipped_stats(shift_temp, axis=0)
 
 #
 class PlaneConstant():
@@ -535,6 +546,10 @@ class PlaneConstant():
                 self.function = self.__plane_parameters_2__
             else:
                 self.function = self.__plane_parameters_4__
+        if(self.mod == "simple"):
+            p=3
+        elif(self.mod == "medium"):
+            p=6
         print("Plane constant calculation mod: ", self.mod)
         return p
 
@@ -741,12 +756,12 @@ class PlateRecognize():
         self.center = new_center
         self.rotation_matrix = self.rotation_matrix_func()
 
-    def plane_constant(self):
+    def plane_constant(self, mod: str = "simple"):
         index_array = np.argwhere(self.plane_objects_index_array_of_stars >= 0).flatten()
         xy = self.plane_objects[index_array]
         real_xy = self.RADEC_to_PlaneXY(self.stars).transpose()[self.plane_objects_index_array_of_stars[index_array]]
         
-        self.plane_constants = PlaneConstant()
+        self.plane_constants = PlaneConstant(mod=mod)
         self.plane_constants.plane_parameters(xy,real_xy)
                 
         print("Plane constants precision")
