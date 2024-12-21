@@ -306,7 +306,9 @@ class ShiftFinder():
         self.xy_2 = xy_2
         #
         if(N is None):
-            N = xy_1.shape[0]
+            self.N = xy_1.shape[0]
+        else:
+            self.N = N
         #
         if(N > xy_1.shape[0]):
             raise Exception("Number of unit (of base array), that must have oponent out of base array size\n Please decrease value of parameter N")
@@ -314,11 +316,7 @@ class ShiftFinder():
         self.gap_value = gap_value
         self.accuracy = accuracy
         self.aperture = aperture
-        #
-        self.main_shift_array = np.zeros((N,xy_2.shape[0],2))
-        #
-        for i in range(0,N,1):
-            self.main_shift_array[i,:] = self.array_to_shift(xy_1[i:i+1:1],xy_2)
+
 
     def operation_on_shift(self, main_shift: np.ndarray, array_of_shifts: np.ndarray, evaluate: str = "hypot", option: str = "min"):
         """
@@ -413,8 +411,15 @@ class ShiftFinder():
         np.ndarray indexes of oponent from sub array
         
         """
+        if(not hasattr(self,'main_shift_array')):
+            #
+            self.main_shift_array = np.zeros((self.N,self.xy_2.shape[0],2))
+            #
+            for i in range(0,self.N,1):
+                self.main_shift_array[i,:] = self.array_to_shift(self.xy_1[i:i+1:1],self.xy_2)
+
         if(N is None):
-            N = self.main_shift_array.shape[0]
+            N = self.N
         elif(N > self.main_shift_array.shape[0]):
             raise Exception("Number of unit (of base array), that must have oponent out of base array size\n Please decrease value of parameter N")
 
@@ -465,6 +470,7 @@ class ShiftFinder():
                         break
                 
                 if(idx_flag == 1):
+                    print("i,j,deep:",i,j,deep,"idx:",idx)
                     # Блок, який викидує значення які за межами середнього.
                     # Нестабільний, бо якщо попадається хоч один елемент з різницею менше за точність (випадково)
                     # то вилітають всі елементи, які мають відстань більше за точність
@@ -472,13 +478,28 @@ class ShiftFinder():
                     none_zero_index = np.argwhere(idx >= 0).flatten()
                     # Можливо, це включення може врятувати ситуацію
                     mean, _, __ = sigma_clipped_stats(self.main_shift_array[none_zero_index,idx[none_zero_index]],axis=0)
+                                            
                     index = self.check_window(mean, self.main_shift_array[none_zero_index,idx[none_zero_index]],accuracy,aperture)
                     for i_i in range(none_zero_index.shape[0]):
                         if(not i_i in index):
                             idx[none_zero_index[i_i]] = -1
+                    #
+                    
+                    if(idx[i] == -1):
+                        t_ = self.check_window(mean,self.main_shift_array[i],accuracy,aperture)
+                        print(t_)
+                        if(isinstance(t_,np.ndarray)):
+                            for i_i in t_:
+                                if(not i_i in idx[np.argwhere(idx >= 0).flatten()]):
+                                    idx[i] = i_i
+                                    break
+
+                    print("i,j,deep:",i,j,deep,"idx:",idx)
+                    if(np.argwhere(idx >= 0).flatten().shape[0] >= idx.shape[0] - self.gap_value):
+                        return idx
                     ####################################################
-                
-                    return idx
+                    continue
+                    #return idx
         
         raise Exception("Something go wrong, increase accuracy")
 
@@ -728,7 +749,8 @@ class PlateRecognize():
         # Треба універсалізувати
         for i in range(mod - 1):
             if(i==mod - 2):
-                raise Exception("Calibration failed") 
+                raise Exception("Calibration failed")
+            
             try:
                 self.plane_objects_index_array_of_stars = shift.one_by_one(xy_1.shape[0])
                 break
