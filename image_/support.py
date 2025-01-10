@@ -346,7 +346,6 @@ class ShiftFinder():
             first_step = temp_shift[:,1]
         else:
             raise Exception("Wrong [evaluate] parameter value, check descrintion for more info")
-        #print("first step", first_step)
 
         second_step = np.array([])
         if(option == "min"):
@@ -470,7 +469,7 @@ class ShiftFinder():
                         break
                 
                 if(idx_flag == 1):
-                    print("i,j,deep:",i,j,deep,"idx:",idx)
+                    #print("i,j,deep:",i,j,deep,"idx:",idx)
                     # Блок, який викидує значення які за межами середнього.
                     # Нестабільний, бо якщо попадається хоч один елемент з різницею менше за точність (випадково)
                     # то вилітають всі елементи, які мають відстань більше за точність
@@ -487,14 +486,13 @@ class ShiftFinder():
                     
                     if(idx[i] == -1):
                         t_ = self.check_window(mean,self.main_shift_array[i],accuracy,aperture)
-                        print(t_)
+                        #
                         if(isinstance(t_,np.ndarray)):
                             for i_i in t_:
                                 if(not i_i in idx[np.argwhere(idx >= 0).flatten()]):
                                     idx[i] = i_i
                                     break
 
-                    print("i,j,deep:",i,j,deep,"idx:",idx)
                     if(np.argwhere(idx >= 0).flatten().shape[0] >= idx.shape[0] - self.gap_value):
                         return idx
                     ####################################################
@@ -599,7 +597,7 @@ class PlaneConstant():
         temp = xy_2 - xy_1
 
         Q = self.function(xy_1[:,0],xy_1[:,1])
-        #print(Q)
+        #
         temp_plane = np.linalg.inv(Q.transpose() @ Q) @ Q.transpose()
 
         X_param = temp_plane @ temp[:,0]
@@ -750,7 +748,6 @@ class PlateRecognize():
         for i in range(mod - 1):
             if(i==mod - 2):
                 raise Exception("Calibration failed")
-            
             try:
                 self.plane_objects_index_array_of_stars = shift.one_by_one(xy_1.shape[0])
                 break
@@ -763,8 +760,7 @@ class PlateRecognize():
         real_XY_center = np.array([self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]) - mean_shift
 
         new_center = self.PlaneXY_to_RADEC(np.array([real_XY_center]))
-        #print(new_center)
-        #print(new_center[:,0][0])
+        #
         new_center = SkyCoord(new_center[:,0][0], new_center[:,1][0], 
                  unit=(u.rad,u.rad), 
                  frame="icrs")
