@@ -1,4 +1,7 @@
 import numpy as np
+import math
+
+nppow = np.vectorize(lambda x,y: math.pow(x,y))
 
 def matrix(angle,axes,round=15):
     """
@@ -69,7 +72,7 @@ def horizontal_to_equatorial(A, h, fi, round = 15):
     temp = np.sin(h).round(round)*np.sin(fi).round(round) - np.cos(A).round(round)*np.cos(h).round(round)*np.cos(fi).round(round)
     if(abs(temp) > 1.0):
         temp = np.round(temp)
-    delta = np.asin(temp)
+    delta = np.arcsin(temp)
     #α
     hour = np.arctan2(np.sin(A).round(round),(np.sin(fi).round(round)*np.cos(A).round(round) + np.cos(fi).round(round)*np.tan(h).round(round)))
 
@@ -115,7 +118,7 @@ def equatorial_to_horizontal(hour, delta, fi, round = 15):
     temp = np.sin(fi).round(round)*np.sin(delta).round(round) + np.cos(fi).round(round)*np.cos(delta).round(round)*np.cos(hour).round(round)
     if(abs(temp) > 1):
         temp = np.round(temp)
-    h = np.asin(temp)
+    h = np.arcsin(temp)
     
     return np.round([A, h],round)
 
@@ -140,9 +143,9 @@ def cartesian_to_spherical(x, y, z, round = 15):
     >>> r, θ, φ
     (np.float64(1.0), np.float64(1.570796326795), np.float64(1.570796326795))
     """
-    r = np.sqrt(np.pow(x,2) + np.pow(y,2) + np.pow(z,2))
-    tetha = np.acos(z/r)
-    fi = np.sign(y)*np.acos(x/(np.sqrt(np.pow(x,2) + np.pow(y,2))))
+    r = np.sqrt(np.square(x) + np.square(y) + np.square(z))
+    tetha = np.arccos(z/r)
+    fi = np.sign(y)*np.arccos(x/np.sqrt(np.square(x) + np.square(y)))
 
     return np.round([r, tetha, fi], round)
 
@@ -213,11 +216,11 @@ def plane_to_cartesian(X,Y,naxis=(576, 768),fov=np.deg2rad((3,4)),orientation=(1
     x = step(X,0)
     y = step(Y,1)
 
-    z = np.sqrt(1 - np.pow(x,2) - np.pow(y,2))
+    z = np.sqrt(1 - np.square(x) - np.square(y))
 
     return np.array([x, y, z])
 
-def cartesian_to_plane(x,y,naxis=(512, 768),fov=np.deg2rad((3,4)),orientation=(1,1)):
+def cartesian_to_plane(x,y,naxis=(576, 768),fov=np.deg2rad((3,4)),orientation=(1,1)):
     """
     These function are for converting `cartesian coordinates` to `2D plane of CCD camera frame`, if z- axes was positive normal of frame
 
@@ -282,11 +285,35 @@ def hour_ra_(angle, siderial_time, local_longitude = 0):
 
 ######################################################################################
 
-def stat(xy):
+def rotation_angle(xy_1: np.ndarray, xy_2: np.ndarray, center: np.ndarray | None = None):
+    """
+    input
+    -----
+    xy : [[X1,Y1],...,[Xn,Yn]], np.ndarray
+
+    return
+    ------
+    angle : radian
+    """
+    if(center is None):
+        center = np.zeros((1,2))
+    # transpose matrix
+    angle_matrix = (xy_2.T - center.T) @ (xy_1.T - center.T).T @ np.linalg.inv((xy_1.T - center.T) @ (xy_1.T - center.T).T)
+    #print(angle_matrix)
+    return (np.arcsin(angle_matrix[0,1]) + np.arcsin(angle_matrix[1,0])).mean()
+
+######################################################################################
+
+def stat(xy, log: str | None = None):
     mean, median, std = sigma_clipped_stats(xy)
-    print("mean:\t", mean)
-    print("median:\t", median)
-    print("std:\t", std)
+    if (log is None):
+        print("mean:\t", mean)
+        print("median:\t", median)
+        print("std:\t", std)
+    else:
+        print("mean:\t", mean, file=open(log, 'a'))
+        print("median:\t", median, file=open(log, 'a'))
+        print("std:\t", std, file=open(log, 'a'))
     return mean, median, std
 
 ######################################################################################
@@ -516,7 +543,7 @@ class ShiftFinder():
         # Визначаємо елементи які мають відповідники
         xy_index = np.argwhere(index_array >= 0).flatten()
         #
-        print("Count of stars with oponent: ",xy_index.shape[0])
+        #print("Count of stars with oponent: ", xy_index.shape[0], file=open(self.config["log"], 'a'))
         # 
         shift_temp = self.xy_1[xy_index] - self.xy_2[index_array[xy_index]]
         
@@ -534,7 +561,7 @@ class PlaneConstant():
         if(plane_param is None):
             return None
         self.plane_param = plane_param
-        print(f"{self.check(plane_param.shape[1])} parameters plane calibration")
+        #print(f"{self.check(plane_param.shape[1])} parameters plane calibration", file=open(self.config["log"], 'a'))
         
     def check(self, length: int):
         p = 0
@@ -569,7 +596,7 @@ class PlaneConstant():
             p=3
         elif(self.mod == "medium"):
             p=6
-        print("Plane constant calculation mod: ", self.mod)
+        #print("Plane constant calculation mod: ", self.mod, file=open(self.config["log"], 'a'))
         return p
 
     def __plane_parameters_1__(self,x,y):
@@ -577,22 +604,22 @@ class PlaneConstant():
     
     def __plane_parameters_2__(self,x,y):
         return np.array([x, y, np.ones(len(x)), 
-                         np.pow(x,2), x*y, np.pow(y,2)]).transpose()
+                         np.square(x), x*y, np.square(y)]).transpose()
     
     def __plane_parameters_3__(self,x,y):
         return np.array([x, y, np.ones(len(x)), 
-                         np.pow(x,2), x*y, np.pow(y,2), 
-                         np.pow(x,3), np.pow(x,2)*y, x*np.pow(y,2), np.pow(y,3)]).transpose()
+                         np.square(x), x*y, np.square(y), 
+                         nppow(x,3), nppow(x,2)*y, x*nppow(y,2), nppow(y,3)]).transpose()
 
     def __plane_parameters_4__(self,x,y):
         return np.array([x, y, np.ones(len(x)), 
-                         np.pow(x,2), x*y, np.pow(y,2), 
-                         np.pow(x,3), np.pow(x,2)*y, x*np.pow(y,2), np.pow(y,3),
-                         np.pow(x,4), np.pow(x,3)*y, np.pow(x,2)*np.pow(y,2), x*np.pow(y,3), np.pow(y,4)]).transpose()
+                         np.square(x), x*y, np.square(y), 
+                         nppow(x,3), nppow(x,2)*y, x*nppow(y,2), nppow(y,3),
+                         nppow(x,4), nppow(x,3)*y, nppow(x,2)*nppow(y,2), x*nppow(y,3), nppow(y,4)]).transpose()
 
     def plane_parameters(self, xy_1: np.ndarray, xy_2: np.ndarray):
         #
-        print(f"{self.check(xy_1.shape[0])} parameters plane calibration")
+        #print(f"{self.check(xy_1.shape[0])} parameters plane calibration", file=open(self.config["log"], 'a'))
         # xy_1 - coordinate from plane
         temp = xy_2 - xy_1
 
@@ -695,14 +722,16 @@ class PlateRecognize():
         return RADEC
 
     def query_stars_coordinate(self, center: SkyCoord, fov: tuple = (3.20264288, 4.27019051), 
-                                catalog: str = "I/350/tyc2tdsc", mag: float = 8.5, scale: float = 2.):
+                                catalog: str = "I/350/tyc2tdsc", mag: float = 8.5, scale: float = 1.):
         #Кидаємо запит до Vizier, щоб витягнути зірки з каталогу Tycho2, які мають яскравість менше 6 mag
         TYCHO2 = Vizier(catalog=catalog)
         # Критерій який скидує ліміт на кількість зірок 
         TYCHO2.ROW_LIMIT = -1
         # 
+        r = np.hypot(fov[1],fov[0])*scale
+        #
         result = TYCHO2.query_region(coordinates=center,
-                                width=fov[1]*scale*u.deg,height=fov[0]*scale*u.deg,
+                                radius = r*u.deg,
                                 column_filters={'BTmag': f'<{mag}'})
 
         return np.deg2rad(np.sort(result[0],order="BTmag")[["RAT","DET"]].tolist())
@@ -711,8 +740,8 @@ class PlateRecognize():
         # Get statistics
         #img = (img-np.min(img)).astype(np.uint16)
         mean, median, std = sigma_clipped_stats(self.data, sigma=3)
-        #threshold = mean + (3. * std)
-        threshold = std*6
+        threshold = median + (3. * std)
+        #threshold = std*6
 
         # Detect sources
         # https://photutils.readthedocs.io/en/2.0.0/user_guide/psf.html
@@ -732,6 +761,24 @@ class PlateRecognize():
         xy = [[rec['x_fit'], rec['y_fit']] for rec in phot if rec["flags"] == 0]
 
         return np.array(xy)
+    
+    def calibration_angle(self):
+        index_array = np.argwhere(self.plane_objects_index_array_of_stars >= 0).flatten()
+        xy = self.plane_objects[index_array]
+        real_xy = self.RADEC_to_PlaneXY(self.stars).transpose()[self.plane_objects_index_array_of_stars[index_array]]
+
+        print("Shift calibration precision")
+        stat(xy - real_xy)
+
+        angle = rotation_angle(xy, real_xy, center=np.array([[self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]]))
+        print(matrix(angle,"z"))
+        print(angle,np.rad2deg(angle))
+        self.rotation_matrix = matrix(-angle,"z") @ self.rotation_matrix
+
+        real_xy = self.RADEC_to_PlaneXY(self.stars).transpose()[self.plane_objects_index_array_of_stars[index_array]]
+        print("Angle calibration precision")
+        stat(xy - real_xy)
+
     
     def calibration(self, mod: int = 6, aperture: list = [2,np.deg2rad(2)]):
         """
@@ -757,6 +804,9 @@ class PlateRecognize():
 
         mean_shift, median_shift, std_shift = shift.shift_statistic(self.plane_objects_index_array_of_stars)
 
+        print("Count of stars with oponent: ", np.argwhere(self.plane_objects_index_array_of_stars >= 0).flatten().shape[0], file=open(self.config["log"], 'a'))
+        #
+
         real_XY_center = np.array([self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]) - mean_shift
 
         new_center = self.PlaneXY_to_RADEC(np.array([real_XY_center]))
@@ -765,14 +815,46 @@ class PlateRecognize():
                  unit=(u.rad,u.rad), 
                  frame="icrs")
         #
-        print("Agulare distance ", self.center.separation(new_center))
-        print("Plane distance:")
-        print("mean:\t", mean_shift)
-        print("median:\t", median_shift)
-        print("std:\t", std_shift)
+        print("Agulare distance ", self.center.separation(new_center), file=open(self.config["log"], 'a'))
+        print("Plane distance:", file=open(self.config["log"], 'a'))
+        print("mean:\t", mean_shift, file=open(self.config["log"], 'a'))
+        print("median:\t", median_shift, file=open(self.config["log"], 'a'))
+        print("std:\t", std_shift, file=open(self.config["log"], 'a'))
 
         self.center = new_center
         self.rotation_matrix = self.rotation_matrix_func()
+
+        #################################################################################
+        #?????????????????????????????????????????????????????????????????
+        #self.calibration_angle()
+
+    def calibration_triangle(self, accuracy: float = 0., aperture: float = 3.):
+        from astrometrica import Triangle
+        xy_2 = self.RADEC_to_PlaneXY(self.stars).transpose()
+        xy_1 = self.plane_objects
+
+        t = Triangle(xy_1, xy_2, np.array([self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]), accuracy, aperture)
+
+        didx, qidx, ang, offs = t.identificate()
+
+        self.plane_objects_index_array_of_stars
+
+        real_XY_center = np.array([self.header["NAXIS1"]/2.,self.header["NAXIS2"]/2.]) - offs[0]
+
+        new_center = self.PlaneXY_to_RADEC(np.array([real_XY_center]))
+        #
+        new_center = SkyCoord(new_center[:,0][0], new_center[:,1][0], 
+                 unit=(u.rad,u.rad), 
+                 frame="icrs")
+        #
+        print("Agulare distance ", self.center.separation(new_center), file=open(self.config["log"], 'a'))
+        print("Plane distance:", file=open(self.config["log"], 'a'))
+        print("mean:\t", offs[0], file=open(self.config["log"], 'a'))
+        print("std:\t", offs[1], file=open(self.config["log"], 'a'))
+
+        self.center = new_center
+        self.rotation_matrix = self.rotation_matrix_func()
+
 
     def plane_constant(self, mod: str = "simple"):
         index_array = np.argwhere(self.plane_objects_index_array_of_stars >= 0).flatten()
@@ -780,12 +862,16 @@ class PlateRecognize():
         real_xy = self.RADEC_to_PlaneXY(self.stars).transpose()[self.plane_objects_index_array_of_stars[index_array]]
         
         self.plane_constants = PlaneConstant(mod=mod)
+        
+        print("Plane constant calculation mod: ", mod, file=open(self.config["log"], 'a'))
+        print(f"{self.plane_constants.check(xy.shape[0])} parameters plane calibration", file=open(self.config["log"], 'a'))
+        
         self.plane_constants.plane_parameters(xy,real_xy)
                 
-        print("Plane constants precision")
-        stat(self.plane_constants.real_coordinate(xy) - real_xy)
-        print("RADEC precision in angular seconds")
-        stat(np.rad2deg(self.PlaneXY_to_RADEC(self.plane_constants.real_coordinate(xy)) - self.PlaneXY_to_RADEC(real_xy))*3600)
+        print("Plane constants precision", file=open(self.config["log"], 'a'))
+        stat(self.plane_constants.real_coordinate(xy) - real_xy, log = self.config["log"])
+        print("RADEC precision in angular seconds", file=open(self.config["log"], 'a'))
+        stat(np.rad2deg(self.PlaneXY_to_RADEC(self.plane_constants.real_coordinate(xy)) - self.PlaneXY_to_RADEC(real_xy))*3600, log = self.config["log"])
 
     def real_coordinate(self, xy_1: np.ndarray):
         
